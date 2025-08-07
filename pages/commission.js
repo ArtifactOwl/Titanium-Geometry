@@ -25,11 +25,17 @@ export default function Commission() {
 
         <label>
           Describe your idea:
-          <textarea name="description" rows="5" required></textarea>
+          <textarea name="description" rows="8" required></textarea>
+        </label>
+
+         <label>
+          Preferred Color(s)- 
+          Purple, Dark Blue, Light Blue, Red, Orange, Gold, Silver, Black, and Rainbow show up the best:
+          <textarea name="colors" rows="5" required></textarea>
         </label>
 
         <label>
-          Upload a design (optional):
+          Upload a design or a Rough Sketch of your Idea (optional):
           <input type="file" name="attachment" accept="image/*,application/pdf" />
         </label>
 

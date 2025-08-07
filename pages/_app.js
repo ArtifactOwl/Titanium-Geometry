@@ -14,6 +14,7 @@ function MyApp({ Component, pageProps }) {
         </Link>
         <nav style={{ display: "flex", gap: "1rem" }}>
           <Link href="/">Home</Link>
+          <Link href="/products">Shop</Link> {/* 👈 Add this line */}
           <Link href="/commission">Commission</Link>
         </nav>
       </header>
