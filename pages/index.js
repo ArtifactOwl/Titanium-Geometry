@@ -4,13 +4,7 @@ import Link from "next/link";
 export default function Home() {
   return (
     <div style={{ fontFamily: "sans-serif", padding: "2rem" }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <img src="/titanium-geometry-full-color.svg" alt="Logo" style={{ height: "50px" }} />
-        <nav style={{ display: "flex", gap: "1rem" }}>
-          <Link href="/">Home</Link>
-          <Link href="/commission">Commission</Link>
-        </nav>
-      </header>
+      
 
       <main style={{ marginTop: "3rem", textAlign: "center" }}>
         <h1>Titanium Pendant Necklaces</h1>
