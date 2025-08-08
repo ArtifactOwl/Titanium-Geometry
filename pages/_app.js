@@ -12,10 +12,11 @@ function MyApp({ Component, pageProps }) {
             style={{ height: "100px", cursor: "pointer" }}
           />
         </Link>
-        <nav style={{ display: "flex", gap: "1rem" }}>
+        <nav style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
           <Link href="/">Home</Link>
-          <Link href="/products">Shop</Link> {/* 👈 Add this line */}
-          <Link href="/commission">Commission</Link>
+          <Link href="/products">Shop</Link>
+          <Link href="/commission">Commissions</Link>
+          <Link href="/contact">Contact</Link>
         </nav>
       </header>
 
