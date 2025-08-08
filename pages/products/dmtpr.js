@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import ColorSelector from "../../components/ColorSelector";
 const imgStyle = {
   width: "100%",
   maxWidth: "400px",
@@ -9,7 +10,9 @@ const imgStyle = {
   marginBottom: "1rem",
 };
 
-export default function ObsidianPendant() {
+export default function dmtpr() {
+
+  const [selectedColor, setSelectedColor] = useState("");
   return (
     <div style={{ padding: "2rem" }}>
       <h1>DMT (DiMethylTryptamine) Molecule Pendant</h1>
@@ -58,6 +61,9 @@ export default function ObsidianPendant() {
         The annodized color layer is also far more resilient than any other type of coloring, and will never crack or peel.  The titanium metal and the annodized color layer 
         are very resistant to scratching, and will look like new after years of wear.
       </p>
+
+      
+      <ColorSelector onColorChange={(color) => setSelectedColor(color)} />
 
       {/* Stripe Buy Button */}
       <form action="https://buy.stripe.com/test_4gw4jL9cY8m9eF23cc" method="POST">
