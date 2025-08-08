@@ -2,5 +2,6 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/products/dmtpr": "pages/products/dmtpr.js"
+  "/": "pages/index.js",
+  "/contact": "pages/contact.js"
 }
