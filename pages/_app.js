@@ -21,7 +21,7 @@ function MyApp({ Component, pageProps }) {
       </header>
 
       <main style={{ marginTop: "3rem" }}>
-        <Component {...pageProps} />
+        <Component {...pageProps} /> 
       </main>
     </div>
   );
