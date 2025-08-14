@@ -1,0 +1,1 @@
+Copy to your project; set STRIPE_SECRET_KEY in Vercel and .env.local.

@@ -4,8 +4,8 @@ const reasons = [
   "Shipping questions",
   "General Questions",
   "Commissions or customized pieces",
-  "Titanium questions - durability, allergies, or other questions",
-  "Out of stock - questions",
+  "Titanium questions",
+  "Out of stock questions",
 ];
 
 export default function ContactPage() {
@@ -14,17 +14,15 @@ export default function ContactPage() {
   return (
     <div style={{ padding: "2rem", maxWidth: 640, margin: "0 auto", fontFamily: "sans-serif" }}>
       <h1>Contact Me</h1>
-      <p>If you’ve got a question or a custom idea, I’d love to hear from you.  I can do combined shipping and discounts for multiple pieces.  If you like a current design but would prefer a different color, let me know the name of the piece and your prefered colors and I can send an invoice via paypal.</p>
+      <p>If you’ve got a question or a custom idea, I’d love to hear from you.</p>
 
       <form
         action="https://formsubmit.co/YOUR_EMAIL@example.com"
         method="POST"
         style={{ display: "grid", gap: "1rem", marginTop: "1rem" }}
       >
-        {/* FormSubmit helpers */}
         <input type="hidden" name="_captcha" value="false" />
         <input type="hidden" name="_template" value="table" />
-        {/* If you want a custom subject line in the email: */}
         <input type="hidden" name="_subject" value={`New contact form submission`} />
 
         <label>
@@ -57,7 +55,6 @@ export default function ContactPage() {
           <textarea name="message" rows={6} required style={textarea} />
         </label>
 
-        {/* Optional: attach a reference image or screenshot */}
         <label>
           Attachment (optional)
           <input name="attachment" type="file" accept="image/*,application/pdf" style={input} />
