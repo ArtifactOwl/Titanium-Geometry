@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import ColorSelector from "../../components/ColorSelector";
+import ColorSelector from "@/components/ColorSelector";
+
 const imgStyle = {
   width: "100%",
   maxWidth: "400px",
@@ -63,7 +64,7 @@ export default function dmtpr() {
       </p>
 
       
-      <ColorSelector onColorChange={(color) => setSelectedColor(color)} />
+      <ColorSelector defaultColor="Steel" onColorChange={setSelectedColor} />
 
       {/* Stripe Buy Button */}
       <form action="https://buy.stripe.com/test_4gw4jL9cY8m9eF23cc" method="POST">
