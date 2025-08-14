@@ -8,6 +8,14 @@ const reasons = [
   "Out of stock questions",
 ];
 
+<p>
+  If you would like to email directly, please send an email to{" "}
+  <a href="mailto:titaniumgeometry@gmail.com">
+    titaniumgeometry@gmail.com
+  </a>
+</p>
+
+
 export default function ContactPage() {
   const [reason, setReason] = useState(reasons[0]);
 
@@ -17,7 +25,7 @@ export default function ContactPage() {
       <p>If you’ve got a question or a custom idea, I’d love to hear from you.</p>
 
       <form
-        action="https://formsubmit.co/YOUR_EMAIL@example.com"
+        action="https://formsubmit.co/titaniumgeometry@gmail.com"
         method="POST"
         style={{ display: "grid", gap: "1rem", marginTop: "1rem" }}
       >
