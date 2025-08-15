@@ -8,12 +8,7 @@ const reasons = [
   "Out of stock questions",
 ];
 
-<p>
-  If you would like to email directly, please send an email to{" "}
-  <a href="mailto:titaniumgeometry@gmail.com">
-    titaniumgeometry@gmail.com
-  </a>
-</p>
+
 
 
 export default function ContactPage() {
@@ -22,6 +17,14 @@ export default function ContactPage() {
   return (
     <div style={{ padding: "2rem", maxWidth: 640, margin: "0 auto", fontFamily: "sans-serif" }}>
       <h1>Contact Me</h1>
+
+      <p>
+  If you would like to email directly, please send an email to{" "}
+  <a href="mailto:titaniumgeometry@gmail.com">
+    titaniumgeometry@gmail.com
+  </a>
+      </p>
+
       <p>If you’ve got a question or a custom idea, I’d love to hear from you.</p>
 
       <form
