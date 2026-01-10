@@ -13,16 +13,6 @@
   },
   "products": [
     {
-      "id": "dmt-molecule-purple-blue",
-      "name": "DMT Molecule - Purple & Blue",
-      "description": "Flower of life & mandala engravings inside of the ring structure.",
-      "price": 80.0,
-      "group": "Molecules",
-      "folder": "dmt-molecule-purple-blue",
-      "sold": false,
-      "created": "2026-01-09"
-    },
-    {
       "id": "dmt-molecule-purpleblue",
       "name": "DMT Molecule - Purple/Blue",
       "description": "DMT Molecule in purple and blue, with a Flower of Life design and a mandala design inside the rings.",
@@ -49,6 +39,16 @@
       "price": 75.0,
       "group": "Geometric Pendants",
       "folder": "nautilus-white-gold-violet-red",
+      "status": "available",
+      "created": "2026-01-10"
+    },
+    {
+      "id": "nautilus-purple-red",
+      "name": "Nautilus - Purple & Red",
+      "description": "Nautilus - Purple & Red in solid titanium",
+      "price": 75.0,
+      "group": "Geometric Pendants",
+      "folder": "nautilus-purple-red",
       "status": "available",
       "created": "2026-01-10"
     }
