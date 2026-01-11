@@ -139,8 +139,22 @@ export default function ProductPage() {
               ))}
             </div>
 
-            {/* Video if exists */}
+            {/* Local video if exists */}
             <VideoWithFallback src={videos[0]} />
+            
+            {/* YouTube video if exists */}
+            {product.youtubeId && (
+              <div style={youtubeContainerStyle}>
+                <iframe
+                  style={youtubeStyle}
+                  src={`https://www.youtube.com/embed/${product.youtubeId}`}
+                  title={`${product.name} video`}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            )}
           </div>
 
           {/* Product Info */}
@@ -161,7 +175,15 @@ export default function ProductPage() {
               </div>
             ) : (
               <>
-                <p style={priceStyle}>${product.price}</p>
+                {product.salePrice && product.originalPrice ? (
+                  <div style={priceStyle}>
+                    <span style={salePriceStyle}>${product.salePrice}</span>
+                    <span style={originalPriceStyle}>${product.originalPrice}</span>
+                    <span style={saleBadgeStyle}>SALE</span>
+                  </div>
+                ) : (
+                  <p style={priceStyle}>${product.price}</p>
+                )}
                 
                 {/* Shipping Selector */}
                 <div style={shippingBoxStyle}>
@@ -437,6 +459,17 @@ const videoStyle = {
   marginTop: "1rem",
 };
 
+const youtubeContainerStyle = {
+  width: "100%",
+  marginTop: "1rem",
+};
+
+const youtubeStyle = {
+  width: "100%",
+  aspectRatio: "16/9",
+  borderRadius: "8px",
+};
+
 const infoStyle = {
   display: "flex",
   flexDirection: "column",
@@ -456,6 +489,28 @@ const priceStyle = {
   fontSize: "1.5rem",
   fontWeight: "bold",
   marginBottom: "1.5rem",
+};
+
+const salePriceStyle = {
+  color: "#dc2626",
+  marginRight: "0.75rem",
+};
+
+const originalPriceStyle = {
+  textDecoration: "line-through",
+  color: "#9ca3af",
+  fontSize: "1.1rem",
+  marginRight: "0.75rem",
+};
+
+const saleBadgeStyle = {
+  background: "#dc2626",
+  color: "white",
+  padding: "0.2rem 0.5rem",
+  borderRadius: "4px",
+  fontSize: "0.75rem",
+  fontWeight: "bold",
+  verticalAlign: "middle",
 };
 
 const soldNoticeStyle = {

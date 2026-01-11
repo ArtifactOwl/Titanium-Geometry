@@ -30,16 +30,6 @@ export default function Home() {
           Each piece is one of a kind.
         </p>
 
-        {/* Sample Images */}
-        <section style={sectionStyle}>
-          <h2 style={h2Style}>Sample Designs</h2>
-          <div style={sampleImagesStyle}>
-            <img src="/orbitals.jpg" alt="Orbitals pendant" style={sampleImageStyle} />
-            <img src="/selection.jpg" alt="Selection of pendants" style={sampleImageStyle} />
-            <img src="/dmtmolecule.jpg" alt="DMT molecule pendant" style={sampleImageStyle} />
-          </div>
-        </section>
-
         {/* Shop by Category */}
         <section style={sectionStyle}>
           <h2 style={h2Style}>Shop by Category</h2>
@@ -81,6 +71,22 @@ export default function Home() {
             </Link>
             <Link href="/commission" style={btnOutlineStyle}>
               Request Custom Design
+            </Link>
+          </div>
+        </section>
+
+        {/* Sample Images */}
+        <section style={sectionStyle}>
+          <h2 style={h2Style}>Sample Designs</h2>
+          <div style={sampleImagesStyle}>
+            <Link href="/shop?group=Geometric%20Pendants">
+              <img src="/orbitals.jpg" alt="Geometric pendants" style={sampleImageStyle} />
+            </Link>
+            <Link href="/shop">
+              <img src="/selection.jpg" alt="View all products" style={sampleImageStyle} />
+            </Link>
+            <Link href="/shop?group=Molecules">
+              <img src="/dmtmolecule.jpg" alt="Molecule pendants" style={sampleImageStyle} />
             </Link>
           </div>
         </section>
