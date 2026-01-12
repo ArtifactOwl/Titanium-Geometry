@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Head from "next/head";
 import products from "../data/products.json";
 
 export default function Home() {
@@ -9,6 +10,12 @@ export default function Home() {
   
   return (
     <div style={pageStyle}>
+      <Head>
+        <title>Titanium Geometry | Unique Titanium Pendants</title>
+        <meta name="description" content="One-of-a-kind titanium pendant necklaces with precision laser engraving and anodized coloring." />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
       {/* Header */}
       <header style={headerStyle}>
         <img src="/titanium-geometry-full-color.svg" alt="Titanium Geometry" style={{ height: 60 }} />

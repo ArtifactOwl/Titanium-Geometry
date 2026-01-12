@@ -10,6 +10,11 @@ export default function PreviousWork() {
   
   return (
     <div style={pageStyle}>
+      <Head>
+        <title>Previous Work | Titanium Geometry</title>
+        <meta name="description" content="Gallery of previous titanium pendant commissions." />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
       {/* Header */}
       <header style={headerStyle}>
         <Link href="/">

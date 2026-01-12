@@ -18,18 +18,42 @@ from pathlib import Path
 # Configuration
 PROJECT_PATH = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(PROJECT_PATH, "data", "products.json")
+SETTINGS_FILE = os.path.join(PROJECT_PATH, "data", "admin_settings.json")
 PENDANTS_FOLDER = os.path.join(PROJECT_PATH, "public", "pendants")
 PREVIOUS_WORK_FOLDER = os.path.join(PROJECT_PATH, "public", "previous-work")
+
+# Item ID prefixes by group
+GROUP_PREFIXES = {
+    "Geometric Pendants": "G",
+    "Molecules": "M",
+    "Organic and Other Pendants": "O",
+    "Judaic": "J",
+}
+DEFAULT_PREFIX = "X"
+
+DEFAULT_STANDARD_TEXT = """Includes:
+• Titanium pendant with precision laser engraving
+• 24" black cord necklace (or keychain attachment on request)
+• Gift box
+
+Shipping:
+• US orders ship free via USPS First Class (3-5 business days)
+• International shipping available
+
+Care:
+• Titanium is hypoallergenic and will not tarnish
+• Clean with mild soap and water"""
 
 
 class ProductAdminApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Titanium Geometry - Product Admin")
-        self.root.geometry("950x800")
+        self.root.geometry("950x850")
         self.root.resizable(True, True)
         
         self.data = self.load_data()
+        self.settings = self.load_settings()
         
         self.notebook = ttk.Notebook(root)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -40,6 +64,7 @@ class ProductAdminApp:
         self.sales_tab = ttk.Frame(self.notebook)
         self.groups_tab = ttk.Frame(self.notebook)
         self.videos_tab = ttk.Frame(self.notebook)
+        self.settings_tab = ttk.Frame(self.notebook)
         
         self.notebook.add(self.add_tab, text="  Add Product  ")
         self.notebook.add(self.manage_tab, text="  Manage Products  ")
@@ -47,6 +72,7 @@ class ProductAdminApp:
         self.notebook.add(self.sales_tab, text="  Sales/Pricing  ")
         self.notebook.add(self.groups_tab, text="  Groups  ")
         self.notebook.add(self.videos_tab, text="  Videos  ")
+        self.notebook.add(self.settings_tab, text="  Settings  ")
         
         self.create_add_tab()
         self.create_manage_tab()
@@ -54,6 +80,7 @@ class ProductAdminApp:
         self.create_sales_tab()
         self.create_groups_tab()
         self.create_videos_tab()
+        self.create_settings_tab()
         
     def load_data(self):
         if os.path.exists(DATA_FILE):
@@ -72,6 +99,21 @@ class ProductAdminApp:
         os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
         with open(DATA_FILE, 'w') as f:
             json.dump(self.data, f, indent=2)
+    
+    def load_settings(self):
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, 'r') as f:
+                return json.load(f)
+        else:
+            return {
+                "standardText": DEFAULT_STANDARD_TEXT,
+                "includeStandardTextByDefault": True
+            }
+    
+    def save_settings(self):
+        os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
+        with open(SETTINGS_FILE, 'w') as f:
+            json.dump(self.settings, f, indent=2)
     
     def slugify(self, text):
         text = text.lower().strip()
@@ -93,10 +135,61 @@ class ProductAdminApp:
             match = re.search(r'embed/([a-zA-Z0-9_-]{11})', url)
             if match: return match.group(1)
         return None
+    
+    def get_group_prefix(self, group):
+        return GROUP_PREFIXES.get(group, DEFAULT_PREFIX)
+    
+    def generate_item_id(self, group):
+        """Generate next available item ID for a group"""
+        prefix = self.get_group_prefix(group)
+        
+        # Find highest existing number for this prefix
+        max_num = 0
+        for p in self.data['products']:
+            item_id = p.get('itemId', '')
+            if item_id.startswith(prefix):
+                try:
+                    num = int(item_id[1:])
+                    max_num = max(max_num, num)
+                except ValueError:
+                    pass
+        
+        # Return next number
+        return f"{prefix}{max_num + 1:04d}"
+    
+    def assign_all_item_ids(self):
+        """Assign item IDs to all products that don't have one"""
+        count = 0
+        for product in self.data['products']:
+            if not product.get('itemId'):
+                product['itemId'] = self.generate_item_id(product['group'])
+                count += 1
+        
+        self.save_data()
+        return count
 
     # ==================== ADD PRODUCT TAB ====================
     def create_add_tab(self):
-        main_frame = ttk.Frame(self.add_tab, padding="20")
+        # Create canvas with scrollbar for this tab
+        canvas = tk.Canvas(self.add_tab)
+        scrollbar = ttk.Scrollbar(self.add_tab, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Bind mousewheel
+        canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
+        
+        main_frame = ttk.Frame(scrollable_frame, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         ttk.Label(main_frame, text="Add New Product", font=('Helvetica', 16, 'bold')).pack(pady=(0, 20))
@@ -118,8 +211,24 @@ class ProductAdminApp:
         self.price_entry.pack(anchor='w', pady=(0, 10))
         
         ttk.Label(main_frame, text="Description:").pack(anchor='w')
-        self.desc_text = scrolledtext.ScrolledText(main_frame, width=50, height=5)
+        self.desc_text = scrolledtext.ScrolledText(main_frame, width=50, height=4)
         self.desc_text.pack(fill='x', pady=(0, 10))
+        
+        # Standard text section
+        std_frame = ttk.LabelFrame(main_frame, text="Standard Text", padding=10)
+        std_frame.pack(fill='x', pady=(0, 10))
+        
+        self.include_std_var = tk.BooleanVar(value=self.settings.get('includeStandardTextByDefault', True))
+        ttk.Checkbutton(std_frame, text="Include standard text in description", 
+                       variable=self.include_std_var).pack(anchor='w')
+        
+        ttk.Label(std_frame, text="(Edit standard text in Settings tab)", 
+                  foreground='gray', font=('Helvetica', 8)).pack(anchor='w')
+        
+        # Preview of standard text
+        self.std_preview = scrolledtext.ScrolledText(std_frame, width=50, height=4, state='disabled')
+        self.std_preview.pack(fill='x', pady=(5, 0))
+        self.update_std_preview()
         
         ttk.Label(main_frame, text="YouTube Video URL (optional):").pack(anchor='w')
         self.youtube_entry = ttk.Entry(main_frame, width=50)
@@ -129,7 +238,13 @@ class ProductAdminApp:
         self.folder_var = tk.StringVar(value="(enter product name above)")
         ttk.Label(main_frame, textvariable=self.folder_var, font=('Courier', 9), foreground='blue').pack(anchor='w', pady=(0, 10))
         
+        # Item ID preview
+        ttk.Label(main_frame, text="Item ID (auto-generated):").pack(anchor='w')
+        self.item_id_var = tk.StringVar(value="(select group above)")
+        ttk.Label(main_frame, textvariable=self.item_id_var, font=('Courier', 9), foreground='green').pack(anchor='w', pady=(0, 10))
+        
         self.name_entry.bind('<KeyRelease>', self.update_folder_preview)
+        self.group_combo.bind('<<ComboboxSelected>>', self.update_item_id_preview)
         
         btn_frame = ttk.Frame(main_frame)
         btn_frame.pack(fill='x', pady=20)
@@ -139,12 +254,26 @@ class ProductAdminApp:
         self.add_status_var = tk.StringVar(value="Ready")
         ttk.Label(main_frame, textvariable=self.add_status_var, foreground='gray').pack(anchor='w')
     
+    def update_std_preview(self):
+        self.std_preview.config(state='normal')
+        self.std_preview.delete("1.0", tk.END)
+        self.std_preview.insert("1.0", self.settings.get('standardText', DEFAULT_STANDARD_TEXT))
+        self.std_preview.config(state='disabled')
+    
     def update_folder_preview(self, event=None):
         name = self.name_entry.get()
         if name.strip():
             self.folder_var.set(os.path.join(PENDANTS_FOLDER, self.slugify(name)))
         else:
             self.folder_var.set("(enter product name above)")
+    
+    def update_item_id_preview(self, event=None):
+        group = self.group_var.get()
+        if group:
+            next_id = self.generate_item_id(group)
+            self.item_id_var.set(next_id)
+        else:
+            self.item_id_var.set("(select group above)")
     
     def add_product(self):
         name = self.name_entry.get().strip()
@@ -169,18 +298,30 @@ class ProductAdminApp:
             youtube_id = self.extract_youtube_id(youtube_url)
             if not youtube_id: return messagebox.showerror("Error", "Invalid YouTube URL format")
         
+        # Add standard text if checked
+        if self.include_std_var.get():
+            std_text = self.settings.get('standardText', DEFAULT_STANDARD_TEXT)
+            if description:
+                description = description + "\n\n" + std_text
+            else:
+                description = std_text
+        
         folder_path = os.path.join(PENDANTS_FOLDER, slug)
         os.makedirs(folder_path, exist_ok=True)
         
+        # Generate item ID
+        item_id = self.generate_item_id(group)
+        
         product = {"id": slug, "name": name, "description": description, "price": price, 
                    "group": group, "folder": slug, "status": "available", 
+                   "itemId": item_id,
                    "created": datetime.now().strftime("%Y-%m-%d")}
         if youtube_id: product["youtubeId"] = youtube_id
         
         self.data['products'].append(product)
         self.save_data()
         
-        messagebox.showinfo("Success", f"Product '{name}' added!\n\nAdd images to:\n{folder_path}")
+        messagebox.showinfo("Success", f"Product '{name}' added!\nItem ID: {item_id}\n\nAdd images to:\n{folder_path}")
         
         self.name_entry.delete(0, tk.END)
         self.desc_text.delete("1.0", tk.END)
@@ -188,8 +329,9 @@ class ProductAdminApp:
         self.price_entry.insert(0, "75")
         self.youtube_entry.delete(0, tk.END)
         self.folder_var.set("(enter product name above)")
-        self.add_status_var.set(f"Added: {name}")
+        self.add_status_var.set(f"Added: {name} ({item_id})")
         self.refresh_product_list()
+        self.update_item_id_preview()
         
         if messagebox.askyesno("Open Folder?", "Open the product folder to add images?"):
             os.startfile(folder_path)
@@ -213,14 +355,15 @@ class ProductAdminApp:
         filter_combo.pack(side='left', padx=10)
         filter_combo.bind('<<ComboboxSelected>>', lambda e: self.refresh_product_list())
         ttk.Button(filter_frame, text="Refresh", command=self.refresh_product_list).pack(side='left')
+        ttk.Button(filter_frame, text="Update All Item IDs", command=self.update_all_item_ids).pack(side='right')
         
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
-        columns = ('name', 'group', 'price', 'status', 'video')
+        columns = ('itemId', 'name', 'group', 'price', 'status', 'video')
         self.product_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=10)
-        for col, w in [('name', 200), ('group', 120), ('price', 100), ('status', 80), ('video', 50)]:
-            self.product_tree.heading(col, text=col.title())
+        for col, w in [('itemId', 70), ('name', 180), ('group', 110), ('price', 90), ('status', 70), ('video', 50)]:
+            self.product_tree.heading(col, text=col.replace('itemId', 'Item #').title())
             self.product_tree.column(col, width=w)
         
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.product_tree.yview)
@@ -240,6 +383,14 @@ class ProductAdminApp:
         
         self.refresh_product_list()
     
+    def update_all_item_ids(self):
+        count = self.assign_all_item_ids()
+        self.refresh_product_list()
+        if count > 0:
+            messagebox.showinfo("Done", f"Assigned item IDs to {count} products")
+        else:
+            messagebox.showinfo("Done", "All products already have item IDs")
+    
     def refresh_product_list(self):
         for item in self.product_tree.get_children():
             self.product_tree.delete(item)
@@ -254,11 +405,12 @@ class ProductAdminApp:
         for product in products:
             status = product.get('status', 'available').upper()
             has_video = "✓" if product.get('youtubeId') else ""
+            item_id = product.get('itemId', '-')
             if product.get('salePrice'):
                 price_display = f"${product['salePrice']} (was ${product.get('originalPrice', product['price'])})"
             else:
                 price_display = f"${product['price']}"
-            self.product_tree.insert('', tk.END, iid=product['id'], values=(product['name'], product['group'], price_display, status, has_video))
+            self.product_tree.insert('', tk.END, iid=product['id'], values=(item_id, product['name'], product['group'], price_display, status, has_video))
         
         self.group_combo['values'] = self.data['groups']
     
@@ -323,21 +475,34 @@ class ProductAdminApp:
         
         dialog = tk.Toplevel(self.root)
         dialog.title(f"Edit Description - {product['name']}")
-        dialog.geometry("500x300")
+        dialog.geometry("500x350")
         dialog.transient(self.root); dialog.grab_set()
         
         frame = ttk.Frame(dialog, padding=20)
         frame.pack(fill=tk.BOTH, expand=True)
         ttk.Label(frame, text="Description:").pack(anchor='w')
-        desc_text = scrolledtext.ScrolledText(frame, width=50, height=10)
+        desc_text = scrolledtext.ScrolledText(frame, width=50, height=12)
         desc_text.pack(fill=tk.BOTH, expand=True, pady=10)
         desc_text.insert("1.0", product.get('description', ''))
+        
+        btn_frame = ttk.Frame(frame)
+        btn_frame.pack(fill='x')
+        
+        def append_std():
+            std_text = self.settings.get('standardText', DEFAULT_STANDARD_TEXT)
+            current = desc_text.get("1.0", tk.END).strip()
+            if current:
+                desc_text.insert(tk.END, "\n\n" + std_text)
+            else:
+                desc_text.insert("1.0", std_text)
         
         def save():
             product['description'] = desc_text.get("1.0", tk.END).strip()
             self.save_data(); dialog.destroy()
             messagebox.showinfo("Done", "Description updated")
-        ttk.Button(frame, text="Save", command=save).pack()
+        
+        ttk.Button(btn_frame, text="Append Standard Text", command=append_std).pack(side='left')
+        ttk.Button(btn_frame, text="Save", command=save).pack(side='right')
     
     def change_group(self):
         pid = self.get_selected_product()
@@ -347,7 +512,7 @@ class ProductAdminApp:
         
         dialog = tk.Toplevel(self.root)
         dialog.title(f"Change Group - {product['name']}")
-        dialog.geometry("350x150")
+        dialog.geometry("350x180")
         dialog.transient(self.root); dialog.grab_set()
         
         frame = ttk.Frame(dialog, padding=20)
@@ -356,10 +521,16 @@ class ProductAdminApp:
         group_var = tk.StringVar(value=product['group'])
         ttk.Combobox(frame, textvariable=group_var, values=self.data['groups'], width=30).pack(fill='x', pady=10)
         
+        regen_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(frame, text="Regenerate Item ID for new group", variable=regen_var).pack(anchor='w')
+        
         def save():
-            product['group'] = group_var.get()
+            new_group = group_var.get()
+            product['group'] = new_group
+            if regen_var.get():
+                product['itemId'] = self.generate_item_id(new_group)
             self.save_data(); self.refresh_product_list(); dialog.destroy()
-        ttk.Button(frame, text="Save", command=save).pack()
+        ttk.Button(frame, text="Save", command=save).pack(pady=10)
     
     def open_product_folder(self):
         pid = self.get_selected_product()
@@ -425,6 +596,7 @@ class ProductAdminApp:
         
         prev_item = {"id": product['id'], "name": product['name'], "folder": product['folder'], "description": product.get('description', '')}
         if product.get('youtubeId'): prev_item['youtubeId'] = product['youtubeId']
+        if product.get('itemId'): prev_item['itemId'] = product['itemId']
         
         if 'previousWork' not in self.data: self.data['previousWork'] = []
         self.data['previousWork'].append(prev_item)
@@ -449,10 +621,10 @@ class ProductAdminApp:
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
-        columns = ('name', 'description', 'video')
+        columns = ('itemId', 'name', 'description', 'video')
         self.prev_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=10)
-        for col, w in [('name', 200), ('description', 300), ('video', 50)]:
-            self.prev_tree.heading(col, text=col.title())
+        for col, w in [('itemId', 70), ('name', 180), ('description', 250), ('video', 50)]:
+            self.prev_tree.heading(col, text=col.replace('itemId', 'Item #').title())
             self.prev_tree.column(col, width=w)
         
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.prev_tree.yview)
@@ -473,8 +645,9 @@ class ProductAdminApp:
         self.data = self.load_data()
         for item in self.data.get('previousWork', []):
             has_video = "✓" if item.get('youtubeId') else ""
-            desc = (item.get('description', '')[:50] + '...') if len(item.get('description', '')) > 50 else item.get('description', '')
-            self.prev_tree.insert('', tk.END, iid=item['id'], values=(item['name'], desc, has_video))
+            item_id = item.get('itemId', '-')
+            desc = (item.get('description', '')[:40] + '...') if len(item.get('description', '')) > 40 else item.get('description', '')
+            self.prev_tree.insert('', tk.END, iid=item['id'], values=(item_id, item['name'], desc, has_video))
     
     def add_previous_work(self):
         dialog = tk.Toplevel(self.root)
@@ -631,10 +804,10 @@ class ProductAdminApp:
         sales_frame = ttk.LabelFrame(main_frame, text="Current Sale Items", padding=15)
         sales_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
-        columns = ('name', 'original', 'sale', 'discount')
+        columns = ('itemId', 'name', 'original', 'sale', 'discount')
         self.sales_tree = ttk.Treeview(sales_frame, columns=columns, show='headings', height=8)
-        for col, w in [('name', 200), ('original', 80), ('sale', 80), ('discount', 80)]:
-            self.sales_tree.heading(col, text=col.title())
+        for col, w in [('itemId', 70), ('name', 180), ('original', 70), ('sale', 70), ('discount', 70)]:
+            self.sales_tree.heading(col, text=col.replace('itemId', 'Item #').title())
             self.sales_tree.column(col, width=w)
         self.sales_tree.pack(fill=tk.BOTH, expand=True)
         
@@ -700,7 +873,8 @@ class ProductAdminApp:
             if p.get('salePrice') is not None and p.get('originalPrice') is not None:
                 orig, sale = p['originalPrice'], p['salePrice']
                 disc = round((1 - sale/orig) * 100, 1) if orig > 0 else 0
-                self.sales_tree.insert('', tk.END, iid=p['id'], values=(p['name'], f"${orig}", f"${sale}", f"{disc}% off"))
+                item_id = p.get('itemId', '-')
+                self.sales_tree.insert('', tk.END, iid=p['id'], values=(item_id, p['name'], f"${orig}", f"${sale}", f"{disc}% off"))
         self.sale_cat_combo['values'] = ["All Products"] + self.data['groups']
 
     # ==================== GROUPS TAB ====================
@@ -724,6 +898,17 @@ class ProductAdminApp:
         
         ttk.Button(main_frame, text="Delete Selected Group", command=self.delete_group).pack(anchor='w', pady=10)
         
+        # Group prefixes
+        prefix_frame = ttk.LabelFrame(main_frame, text="Item ID Prefixes", padding=10)
+        prefix_frame.pack(fill='x', pady=10)
+        
+        prefix_text = "Current prefixes:\n"
+        for group, prefix in GROUP_PREFIXES.items():
+            prefix_text += f"  {prefix} = {group}\n"
+        prefix_text += f"  {DEFAULT_PREFIX} = Other groups"
+        ttk.Label(prefix_frame, text=prefix_text, font=('Courier', 9)).pack(anchor='w')
+        ttk.Label(prefix_frame, text="(Edit GROUP_PREFIXES in script to change)", foreground='gray', font=('Helvetica', 8)).pack(anchor='w')
+        
         ttk.Separator(main_frame, orient='horizontal').pack(fill='x', pady=20)
         self.stats_var = tk.StringVar()
         self.update_stats()
@@ -733,7 +918,8 @@ class ProductAdminApp:
         self.groups_listbox.delete(0, tk.END)
         for g in self.data['groups']:
             count = len([p for p in self.data['products'] if p['group'] == g])
-            self.groups_listbox.insert(tk.END, f"{g} ({count} products)")
+            prefix = GROUP_PREFIXES.get(g, DEFAULT_PREFIX)
+            self.groups_listbox.insert(tk.END, f"[{prefix}] {g} ({count} products)")
     
     def add_group(self):
         new = self.new_group_entry.get().strip()
@@ -749,7 +935,9 @@ class ProductAdminApp:
     def delete_group(self):
         sel = self.groups_listbox.curselection()
         if not sel: return messagebox.showwarning("No Selection", "Select a group")
-        gname = self.groups_listbox.get(sel[0]).rsplit(' (', 1)[0]
+        gtext = self.groups_listbox.get(sel[0])
+        # Extract group name (format: "[X] Group Name (N products)")
+        gname = gtext.split('] ', 1)[1].rsplit(' (', 1)[0]
         count = len([p for p in self.data['products'] if p['group'] == gname])
         if count > 0: return messagebox.showerror("Error", f"Cannot delete - has {count} products")
         if messagebox.askyesno("Confirm", f"Delete '{gname}'?"):
@@ -766,7 +954,8 @@ class ProductAdminApp:
         pend = len([p for p in self.data['products'] if p.get('status') == 'pending'])
         prev = len(self.data.get('previousWork', []))
         sale = len([p for p in self.data['products'] if p.get('salePrice')])
-        self.stats_var.set(f"Products: {total} | Available: {avail} | Sold: {sold} | Pending: {pend} | On Sale: {sale} | Previous Work: {prev}")
+        with_id = len([p for p in self.data['products'] if p.get('itemId')])
+        self.stats_var.set(f"Products: {total} | With Item ID: {with_id} | Available: {avail} | Sold: {sold} | Pending: {pend} | On Sale: {sale} | Previous Work: {prev}")
 
     # ==================== VIDEOS TAB ====================
     def create_videos_tab(self):
@@ -888,6 +1077,53 @@ class ProductAdminApp:
                 for p in self.data['products']:
                     if p['id'] == iid: p.pop('youtubeId', None); break
             self.save_data(); self.refresh_videos_lists(); self.refresh_product_list()
+
+    # ==================== SETTINGS TAB ====================
+    def create_settings_tab(self):
+        main_frame = ttk.Frame(self.settings_tab, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        ttk.Label(main_frame, text="Settings", font=('Helvetica', 16, 'bold')).pack(pady=(0, 20))
+        
+        # Standard text section
+        std_frame = ttk.LabelFrame(main_frame, text="Standard Product Description Text", padding=15)
+        std_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        
+        ttk.Label(std_frame, text="This text can be automatically appended to product descriptions:").pack(anchor='w')
+        
+        self.settings_std_text = scrolledtext.ScrolledText(std_frame, width=60, height=12)
+        self.settings_std_text.pack(fill=tk.BOTH, expand=True, pady=10)
+        self.settings_std_text.insert("1.0", self.settings.get('standardText', DEFAULT_STANDARD_TEXT))
+        
+        self.default_include_var = tk.BooleanVar(value=self.settings.get('includeStandardTextByDefault', True))
+        ttk.Checkbutton(std_frame, text="Include standard text by default when adding products", 
+                       variable=self.default_include_var).pack(anchor='w')
+        
+        btn_frame = ttk.Frame(std_frame)
+        btn_frame.pack(fill='x', pady=10)
+        
+        ttk.Button(btn_frame, text="Save Settings", command=self.save_settings_tab).pack(side='left', padx=5)
+        ttk.Button(btn_frame, text="Reset to Default", command=self.reset_std_text).pack(side='left', padx=5)
+        
+        # Info
+        info_frame = ttk.LabelFrame(main_frame, text="Info", padding=10)
+        info_frame.pack(fill='x', pady=10)
+        
+        ttk.Label(info_frame, text=f"Data file: {DATA_FILE}", font=('Courier', 8), foreground='gray').pack(anchor='w')
+        ttk.Label(info_frame, text=f"Settings file: {SETTINGS_FILE}", font=('Courier', 8), foreground='gray').pack(anchor='w')
+    
+    def save_settings_tab(self):
+        self.settings['standardText'] = self.settings_std_text.get("1.0", tk.END).strip()
+        self.settings['includeStandardTextByDefault'] = self.default_include_var.get()
+        self.save_settings()
+        self.include_std_var.set(self.default_include_var.get())
+        self.update_std_preview()
+        messagebox.showinfo("Done", "Settings saved!")
+    
+    def reset_std_text(self):
+        if messagebox.askyesno("Confirm", "Reset standard text to default?"):
+            self.settings_std_text.delete("1.0", tk.END)
+            self.settings_std_text.insert("1.0", DEFAULT_STANDARD_TEXT)
 
 
 def main():

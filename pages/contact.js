@@ -1,4 +1,5 @@
 import React from "react";
+import Head from "next/head";
 import Link from "next/link";
 
 const CONTACT_EMAIL = "titaniumgeometry@gmail.com";
@@ -6,6 +7,11 @@ const CONTACT_EMAIL = "titaniumgeometry@gmail.com";
 export default function Contact() {
   return (
     <div style={pageStyle}>
+      <Head>
+        <title>Contact | Titanium Geometry</title>
+        <meta name="description" content="Contact Titanium Geometry for questions or custom orders." />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
       {/* Header */}
       <header style={headerStyle}>
         <Link href="/">

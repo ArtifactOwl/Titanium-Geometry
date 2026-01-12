@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import products from "../data/products.json";
 
@@ -25,6 +26,12 @@ export default function Shop() {
 
   return (
     <div style={pageStyle}>
+      <Head>
+        <title>Shop | Titanium Geometry</title>
+        <meta name="description" content="Browse unique titanium pendant necklaces and keychains." />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
       {/* Header */}
       <header style={headerStyle}>
         <Link href="/">

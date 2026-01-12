@@ -1,11 +1,18 @@
 import React from "react";
 import Link from "next/link";
+import Head from "next/head";
 import products from "../data/products.json";
 
 export default function WhyTitanium() {
   const videos = products.youtubeVideos || [];
   return (
     <div style={pageStyle}>
+      <Head>
+        <title>Why Titanium & How It's Made | Titanium Geometry</title>
+        <meta name="description" content="Learn about titanium's exceptional properties and see how our pendants are made." />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
       {/* Header */}
       <header style={headerStyle}>
         <Link href="/">

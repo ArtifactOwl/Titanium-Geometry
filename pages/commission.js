@@ -38,6 +38,11 @@ export default function Commission() {
 
   return (
     <div style={pageStyle}>
+      <Head>
+        <title>Request a Commission | Titanium Geometry</title>
+        <meta name="description" content="Request a custom titanium pendant design." />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
       {/* Header */}
       <header style={headerStyle}>
         <Link href="/">

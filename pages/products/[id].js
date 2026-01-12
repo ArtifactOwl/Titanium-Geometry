@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import Head from "next/head";
 import products from "../../data/products.json";
 
 // Shipping rates (USD) - US is included in base price
@@ -85,6 +86,12 @@ export default function ProductPage() {
 
   return (
     <div style={pageStyle}>
+      <Head>
+        <title>{product.name} | Titanium Geometry</title>
+        <meta name="description" content={product.description || `${product.name} - Unique titanium pendant`} />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
       {/* Header */}
       <header style={headerStyle}>
         <Link href="/">
@@ -183,6 +190,10 @@ export default function ProductPage() {
                   </div>
                 ) : (
                   <p style={priceStyle}>${product.price}</p>
+                )}
+                
+                {product.itemId && (
+                  <p style={itemIdStyle}>Item #{product.itemId}</p>
                 )}
                 
                 {/* Shipping Selector */}
@@ -511,6 +522,13 @@ const saleBadgeStyle = {
   fontSize: "0.75rem",
   fontWeight: "bold",
   verticalAlign: "middle",
+};
+
+const itemIdStyle = {
+  fontSize: "0.9rem",
+  color: "#6b7280",
+  marginBottom: "1rem",
+  fontFamily: "monospace",
 };
 
 const soldNoticeStyle = {

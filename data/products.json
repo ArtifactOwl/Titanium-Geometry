@@ -20,7 +20,8 @@
       "group": "Molecules",
       "folder": "dmt-molecule-purpleblue",
       "sold": false,
-      "created": "2026-01-09"
+      "created": "2026-01-09",
+      "itemId": "M0001"
     },
     {
       "id": "pentalobe-matrix",
@@ -30,7 +31,8 @@
       "group": "Geometric Pendants",
       "folder": "pentalobe-matrix",
       "status": "available",
-      "created": "2026-01-10"
+      "created": "2026-01-10",
+      "itemId": "G0001"
     },
     {
       "id": "nautilus-white-gold-violet-red",
@@ -40,7 +42,8 @@
       "group": "Geometric Pendants",
       "folder": "nautilus-white-gold-violet-red",
       "status": "available",
-      "created": "2026-01-10"
+      "created": "2026-01-10",
+      "itemId": "G0002"
     },
     {
       "id": "nautilus-purple-red",
@@ -50,7 +53,8 @@
       "group": "Geometric Pendants",
       "folder": "nautilus-purple-red",
       "status": "available",
-      "created": "2026-01-10"
+      "created": "2026-01-10",
+      "itemId": "G0003"
     },
     {
       "id": "flower-of-life-mandala-large",
@@ -60,7 +64,8 @@
       "group": "Geometric Pendants",
       "folder": "flower-of-life-mandala-large",
       "status": "available",
-      "created": "2026-01-11"
+      "created": "2026-01-11",
+      "itemId": "G0004"
     },
     {
       "id": "flower-of-life-mandala-small",
@@ -70,7 +75,8 @@
       "group": "Geometric Pendants",
       "folder": "flower-of-life-mandala-small",
       "status": "available",
-      "created": "2026-01-11"
+      "created": "2026-01-11",
+      "itemId": "G0005"
     }
   ],
   "previousWork": [
@@ -83,8 +89,8 @@
   ],
   "youtubeVideos": [
     {
-      "id": "IuMOX-favng",
-      "title": "Finished DMT Molecle"
+      "id": "F53e9Hci2uY",
+      "title": "Cutting out a DMT Pendant"
     }
   ]
 }
