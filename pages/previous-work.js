@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Link from "next/link";
+import Head from "next/head";
 import products from "../data/products.json";
 
 const CONTACT_EMAIL = "titaniumgeometry@gmail.com";
