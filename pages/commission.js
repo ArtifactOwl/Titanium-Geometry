@@ -15,19 +15,32 @@ export default function Commission() {
     budget: '',
   });
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     
     try {
-      const response = await fetch('/api/commission-request', {
+      const response = await fetch('https://formspree.io/f/xbddlgjg', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          _subject: 'Commission Request - Titanium Geometry',
+          name: formData.name,
+          email: formData.email,
+          designType: formData.designType,
+          description: formData.description,
+          colors: formData.colors,
+          size: formData.size,
+          budget: formData.budget
+        })
       });
       
       if (response.ok) {
         setSubmitted(true);
+      } else {
+        throw new Error('Form submission failed');
       }
     } catch (error) {
       // Fallback to mailto
@@ -35,6 +48,7 @@ export default function Commission() {
       const body = `Name: ${formData.name}\nEmail: ${formData.email}\n\nDesign Type: ${formData.designType}\n\nDescription:\n${formData.description}\n\nColors: ${formData.colors}\nSize: ${formData.size}\nBudget: ${formData.budget}`;
       window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     }
+    setSubmitting(false);
   };
 
   return (

@@ -40,6 +40,7 @@ export default function Shop() {
         <nav style={navStyle}>
           <Link href="/" style={navLinkStyle}>Home</Link>
           <Link href="/shop" style={{...navLinkStyle, fontWeight: 700}}>Shop</Link>
+          <Link href="/why-titanium" style={navLinkStyle}>Why Titanium?</Link>
           <Link href="/previous-work" style={navLinkStyle}>Previous Work</Link>
           <Link href="/commission" style={navLinkStyle}>Commissions</Link>
           <Link href="/contact" style={navLinkStyle}>Contact</Link>

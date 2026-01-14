@@ -320,22 +320,36 @@ function VideoWithFallback({ src }) {
 function PendingContactForm({ productName }) {
   const [formData, setFormData] = useState({ email: '', colors: '', size: '', notes: '' });
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   
   const emailSubject = `Interest in: ${productName}`;
   const mailtoLink = `mailto:titaniumgeometry@gmail.com?subject=${encodeURIComponent(emailSubject)}`;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
-      await fetch('/api/commission-request', {
+      const response = await fetch('https://formspree.io/f/xbddlgjg', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemName: productName, type: 'pending-interest', ...formData })
+        body: JSON.stringify({
+          _subject: `Interest in: ${productName}`,
+          productName: productName,
+          type: 'pending-interest',
+          email: formData.email,
+          colors: formData.colors,
+          size: formData.size
+        })
       });
-      setSubmitted(true);
+      if (response.ok) {
+        setSubmitted(true);
+      } else {
+        throw new Error('Form failed');
+      }
     } catch (error) {
       window.location.href = mailtoLink;
     }
+    setSubmitting(false);
   };
 
   if (submitted) {
