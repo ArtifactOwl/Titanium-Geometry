@@ -24,7 +24,10 @@ export default function Commission() {
     try {
       const response = await fetch('https://formspree.io/f/xbddlgjg', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           _subject: 'Commission Request - Titanium Geometry',
           name: formData.name,
