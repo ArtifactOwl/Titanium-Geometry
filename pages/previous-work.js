@@ -85,14 +85,21 @@ function PreviousWorkCard({ item, showForm, onToggleForm }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Send to API endpoint
     try {
-      const response = await fetch('/api/commission-request', {
+      const response = await fetch('https://formspree.io/f/xbddlgjg', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
+          _subject: `Commission Request: ${item.name}`,
           itemName: item.name,
-          ...formData
+          type: 'previous-work-request',
+          email: formData.email,
+          colors: formData.colors,
+          size: formData.size,
+          notes: formData.notes
         })
       });
       
@@ -100,6 +107,8 @@ function PreviousWorkCard({ item, showForm, onToggleForm }) {
         alert('Request sent! I\'ll be in touch soon.');
         onToggleForm();
         setFormData({ email: '', colors: '', size: '', notes: '' });
+      } else {
+        throw new Error('Form failed');
       }
     } catch (error) {
       // Fallback to mailto

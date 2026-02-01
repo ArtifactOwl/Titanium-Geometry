@@ -237,7 +237,7 @@ export default function ProductPage() {
                 >
                   <input type="hidden" name="cmd" value="_xclick" />
                   <input type="hidden" name="business" value={PAYPAL_EMAIL} />
-                  <input type="hidden" name="item_name" value={`${product.name} - Titanium Geometry`} />
+                  <input type="hidden" name="item_name" value={`${product.itemId ? product.itemId + ' - ' : ''}${product.name} - Titanium Geometry`} />
                   <input type="hidden" name="item_number" value={product.id} />
                   <input type="hidden" name="amount" value={totalPrice} />
                   <input type="hidden" name="currency_code" value="USD" />
