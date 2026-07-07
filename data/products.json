@@ -30,7 +30,7 @@
       "price": 75.0,
       "group": "Geometric Pendants",
       "folder": "pentalobe-matrix",
-      "status": "available",
+      "status": "sold",
       "created": "2026-01-10",
       "itemId": "G0001"
     },
@@ -52,7 +52,7 @@
       "price": 75.0,
       "group": "Geometric Pendants",
       "folder": "nautilus-purple-red",
-      "status": "available",
+      "status": "sold",
       "created": "2026-01-10",
       "itemId": "G0003"
     },
@@ -118,7 +118,7 @@
       "price": 93.0,
       "group": "Geometric Pendants",
       "folder": "hypercube-void-large-orange-blue-red",
-      "status": "available",
+      "status": "sold",
       "itemId": "G0009",
       "created": "2026-02-01"
     },
@@ -129,7 +129,7 @@
       "price": 83.0,
       "group": "Geometric Pendants",
       "folder": "hypercube-void-small-purple-ice-blue",
-      "status": "available",
+      "status": "sold",
       "itemId": "G0010",
       "created": "2026-02-01"
     }
