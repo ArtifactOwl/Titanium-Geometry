@@ -59,6 +59,7 @@ class ProductAdminApp:
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
         self.add_tab = ttk.Frame(self.notebook)
+        self.batch_tab = ttk.Frame(self.notebook)
         self.manage_tab = ttk.Frame(self.notebook)
         self.previous_work_tab = ttk.Frame(self.notebook)
         self.sales_tab = ttk.Frame(self.notebook)
@@ -67,6 +68,7 @@ class ProductAdminApp:
         self.settings_tab = ttk.Frame(self.notebook)
         
         self.notebook.add(self.add_tab, text="  Add Product  ")
+        self.notebook.add(self.batch_tab, text="  Batch Create  ")
         self.notebook.add(self.manage_tab, text="  Manage Products  ")
         self.notebook.add(self.previous_work_tab, text="  Previous Work  ")
         self.notebook.add(self.sales_tab, text="  Sales/Pricing  ")
@@ -75,6 +77,7 @@ class ProductAdminApp:
         self.notebook.add(self.settings_tab, text="  Settings  ")
         
         self.create_add_tab()
+        self.create_batch_tab()
         self.create_manage_tab()
         self.create_previous_work_tab()
         self.create_sales_tab()
@@ -120,7 +123,16 @@ class ProductAdminApp:
         text = re.sub(r'[^\w\s-]', '', text)
         text = re.sub(r'[-\s]+', '-', text)
         return text
-    
+
+    def name_from_filename(self, filename):
+        """Turn an image filename into a display name: drop the extension,
+        treat _ and - as word separators, and capitalize the first letter of
+        each word (leaving the rest of each word as-is, e.g. 'DMT' stays 'DMT')."""
+        name = os.path.splitext(filename)[0]
+        name = name.replace('_', ' ')
+        name = re.sub(r'\s+', ' ', name).strip()
+        return re.sub(r'(^|[\s-])(\w)', lambda m: m.group(1) + m.group(2).upper(), name)
+
     def extract_youtube_id(self, url):
         url = url.strip()
         if len(url) == 11 and '/' not in url and '.' not in url:
@@ -339,6 +351,271 @@ class ProductAdminApp:
     def open_pendants_folder(self):
         os.makedirs(PENDANTS_FOLDER, exist_ok=True)
         os.startfile(PENDANTS_FOLDER)
+
+    # ==================== BATCH CREATE TAB ====================
+    def create_batch_tab(self):
+        main_frame = ttk.Frame(self.batch_tab, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        ttk.Label(main_frame, text="Batch Create Products", font=('Helvetica', 16, 'bold')).pack(pady=(0, 5))
+        ttk.Label(main_frame, text="Create one product per image in a folder. Each gets a new item number.",
+                  foreground='gray').pack(pady=(0, 15))
+        
+        # Folder selection
+        folder_frame = ttk.Frame(main_frame)
+        folder_frame.pack(fill='x', pady=5)
+        ttk.Button(folder_frame, text="Select Image Folder", command=self.batch_select_folder).pack(side='left')
+        self.batch_folder_var = tk.StringVar(value="No folder selected")
+        ttk.Label(folder_frame, textvariable=self.batch_folder_var, foreground='blue', 
+                  font=('Courier', 8)).pack(side='left', padx=10)
+        
+        # Settings for all products
+        settings_frame = ttk.LabelFrame(main_frame, text="Settings for All Products", padding=15)
+        settings_frame.pack(fill='x', pady=10)
+        
+        # Group
+        grp_row = ttk.Frame(settings_frame)
+        grp_row.pack(fill='x', pady=5)
+        ttk.Label(grp_row, text="Group:", width=12).pack(side='left')
+        self.batch_group_var = tk.StringVar()
+        self.batch_group_combo = ttk.Combobox(grp_row, textvariable=self.batch_group_var, width=35)
+        self.batch_group_combo['values'] = self.data['groups']
+        if self.data['groups']: self.batch_group_combo.current(0)
+        self.batch_group_combo.pack(side='left', padx=5)
+        self.batch_group_combo.bind('<<ComboboxSelected>>', lambda e: self.batch_refresh_preview())
+        
+        # Price
+        price_row = ttk.Frame(settings_frame)
+        price_row.pack(fill='x', pady=5)
+        ttk.Label(price_row, text="Price ($):", width=12).pack(side='left')
+        self.batch_price_entry = ttk.Entry(price_row, width=15)
+        self.batch_price_entry.insert(0, "75")
+        self.batch_price_entry.pack(side='left', padx=5)
+        
+        # Naming option
+        name_row = ttk.Frame(settings_frame)
+        name_row.pack(fill='x', pady=5)
+        ttk.Label(name_row, text="Name by:", width=12).pack(side='left')
+        self.batch_name_mode = tk.StringVar(value="filename")
+        ttk.Radiobutton(name_row, text="Image filename", variable=self.batch_name_mode, 
+                       value="filename", command=self.batch_refresh_preview).pack(side='left', padx=5)
+        ttk.Radiobutton(name_row, text="Item number", variable=self.batch_name_mode, 
+                       value="itemnumber", command=self.batch_refresh_preview).pack(side='left', padx=5)
+        
+        # Description
+        desc_row = ttk.Frame(settings_frame)
+        desc_row.pack(fill='x', pady=5)
+        ttk.Label(desc_row, text="Description:", width=12).pack(side='left', anchor='n')
+        self.batch_desc_text = scrolledtext.ScrolledText(desc_row, width=40, height=3)
+        self.batch_desc_text.pack(side='left', padx=5)
+        
+        # Standard text checkbox
+        self.batch_include_std_var = tk.BooleanVar(value=self.settings.get('includeStandardTextByDefault', True))
+        ttk.Checkbutton(settings_frame, text="Include standard text in description", 
+                       variable=self.batch_include_std_var).pack(anchor='w', pady=5)
+        
+        # Preview
+        preview_frame = ttk.LabelFrame(main_frame, text="Preview", padding=10)
+        preview_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        
+        columns = ('image', 'name', 'itemId')
+        self.batch_tree = ttk.Treeview(preview_frame, columns=columns, show='headings', height=8)
+        self.batch_tree.heading('image', text='Image File')
+        self.batch_tree.heading('name', text='Product Name')
+        self.batch_tree.heading('itemId', text='Item # (preview)')
+        self.batch_tree.column('image', width=200)
+        self.batch_tree.column('name', width=250)
+        self.batch_tree.column('itemId', width=100)
+        
+        batch_scroll = ttk.Scrollbar(preview_frame, orient=tk.VERTICAL, command=self.batch_tree.yview)
+        self.batch_tree.configure(yscrollcommand=batch_scroll.set)
+        self.batch_tree.pack(side='left', fill=tk.BOTH, expand=True)
+        batch_scroll.pack(side='right', fill='y')
+        
+        # Create button
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(fill='x', pady=10)
+        self.batch_create_btn = ttk.Button(btn_frame, text="Create All Products", 
+                                            command=self.batch_create_all, state='disabled')
+        self.batch_create_btn.pack(side='left')
+        self.batch_status_var = tk.StringVar(value="Select a folder to begin")
+        ttk.Label(btn_frame, textvariable=self.batch_status_var, foreground='gray').pack(side='left', padx=15)
+        
+        self.batch_image_files = []
+        self.batch_folder = None
+    
+    def batch_select_folder(self):
+        from tkinter import filedialog
+        folder = filedialog.askdirectory(title="Select folder with product images")
+        if not folder:
+            return
+        
+        self.batch_folder = folder
+        self.batch_folder_var.set(folder)
+        
+        # Find images
+        valid_ext = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'}
+        self.batch_image_files = []
+        try:
+            for f in sorted(os.listdir(folder)):
+                if os.path.splitext(f)[1].lower() in valid_ext:
+                    self.batch_image_files.append(f)
+        except Exception as e:
+            return messagebox.showerror("Error", f"Could not read folder: {e}")
+        
+        if not self.batch_image_files:
+            self.batch_status_var.set("No images found in folder")
+            self.batch_create_btn.config(state='disabled')
+            return
+        
+        self.batch_refresh_preview()
+        self.batch_create_btn.config(state='normal')
+    
+    def batch_refresh_preview(self):
+        for item in self.batch_tree.get_children():
+            self.batch_tree.delete(item)
+        
+        if not self.batch_image_files:
+            return
+        
+        group = self.batch_group_var.get()
+        prefix = self.get_group_prefix(group)
+        
+        # Simulate sequential item IDs for preview
+        max_num = 0
+        for p in self.data['products']:
+            iid = p.get('itemId', '')
+            if iid.startswith(prefix):
+                try: max_num = max(max_num, int(iid[1:]))
+                except ValueError: pass
+        
+        name_mode = self.batch_name_mode.get()
+        
+        for idx, filename in enumerate(self.batch_image_files):
+            next_id = f"{prefix}{max_num + 1 + idx:04d}"
+            if name_mode == "filename":
+                name = self.name_from_filename(filename)
+            else:
+                name = next_id
+            self.batch_tree.insert('', tk.END, values=(filename, name, next_id))
+        
+        self.batch_status_var.set(f"{len(self.batch_image_files)} products ready to create")
+    
+    def batch_fix_orientation(self, img):
+        """Fix orientation from EXIF; no-op if unavailable"""
+        try:
+            from PIL import ExifTags
+            exif = img._getexif()
+            if exif is None:
+                return img
+            orientation_key = next((k for k, v in ExifTags.TAGS.items() if v == 'Orientation'), None)
+            if orientation_key is None or orientation_key not in exif:
+                return img
+            o = exif[orientation_key]
+            if o == 3: img = img.rotate(180, expand=True)
+            elif o == 6: img = img.rotate(-90, expand=True)
+            elif o == 8: img = img.rotate(90, expand=True)
+            return img
+        except Exception:
+            return img
+    
+    def batch_create_all(self):
+        if not self.batch_image_files:
+            return messagebox.showwarning("No Images", "Select a folder first")
+        
+        group = self.batch_group_var.get().strip()
+        if not group:
+            return messagebox.showerror("Error", "Please select a group")
+        
+        try:
+            price = float(self.batch_price_entry.get().strip())
+        except ValueError:
+            return messagebox.showerror("Error", "Price must be a number")
+        
+        name_mode = self.batch_name_mode.get()
+        base_desc = self.batch_desc_text.get("1.0", tk.END).strip()
+        
+        if self.batch_include_std_var.get():
+            std_text = self.settings.get('standardText', DEFAULT_STANDARD_TEXT)
+            description = (base_desc + "\n\n" + std_text) if base_desc else std_text
+        else:
+            description = base_desc
+        
+        # Confirm
+        if not messagebox.askyesno("Confirm", 
+            f"Create {len(self.batch_image_files)} products?\n\nGroup: {group}\nPrice: ${price}\nName by: {name_mode}"):
+            return
+        
+        # Try to import PIL for image processing
+        try:
+            from PIL import Image as PILImage
+            have_pil = True
+        except ImportError:
+            have_pil = False
+        
+        created = 0
+        skipped = []
+        
+        for filename in self.batch_image_files:
+            item_id = self.generate_item_id(group)
+            
+            if name_mode == "filename":
+                name = self.name_from_filename(filename)
+            else:
+                name = item_id
+            
+            slug = self.slugify(name)
+            
+            # Skip if slug already exists
+            if any(p['id'] == slug for p in self.data['products']):
+                skipped.append(name)
+                continue
+            
+            # Create folder
+            folder_path = os.path.join(PENDANTS_FOLDER, slug)
+            os.makedirs(folder_path, exist_ok=True)
+            
+            # Copy image as 1.jpg
+            src = os.path.join(self.batch_folder, filename)
+            dst = os.path.join(folder_path, "1.jpg")
+            try:
+                if have_pil:
+                    img = PILImage.open(src)
+                    img = self.batch_fix_orientation(img)
+                    img = img.convert('RGB')
+                    img.save(dst, 'JPEG', quality=95)
+                else:
+                    shutil.copy2(src, dst)
+            except Exception as e:
+                skipped.append(f"{name} (image error)")
+                continue
+            
+            # Create product entry
+            product = {"id": slug, "name": name, "description": description, "price": price,
+                       "group": group, "folder": slug, "status": "available",
+                       "itemId": item_id,
+                       "created": datetime.now().strftime("%Y-%m-%d")}
+            self.data['products'].append(product)
+            created += 1
+        
+        self.save_data()
+        self.refresh_product_list()
+        
+        msg = f"Created {created} products!"
+        if skipped:
+            msg += f"\n\nSkipped {len(skipped)} (name already exists):\n" + "\n".join(skipped[:10])
+            if len(skipped) > 10:
+                msg += f"\n...and {len(skipped) - 10} more"
+        messagebox.showinfo("Done", msg)
+        
+        # Reset
+        self.batch_image_files = []
+        self.batch_folder = None
+        self.batch_folder_var.set("No folder selected")
+        self.batch_create_btn.config(state='disabled')
+        for item in self.batch_tree.get_children():
+            self.batch_tree.delete(item)
+        self.batch_status_var.set(f"Created {created} products")
 
     # ==================== MANAGE PRODUCTS TAB ====================
     def create_manage_tab(self):
@@ -928,6 +1205,7 @@ class ProductAdminApp:
         self.data['groups'].append(new)
         self.save_data()
         self.group_combo['values'] = self.data['groups']
+        self.batch_group_combo['values'] = self.data['groups']
         self.refresh_groups_list()
         self.new_group_entry.delete(0, tk.END)
         self.update_stats()
@@ -944,6 +1222,7 @@ class ProductAdminApp:
             self.data['groups'].remove(gname)
             self.save_data()
             self.group_combo['values'] = self.data['groups']
+            self.batch_group_combo['values'] = self.data['groups']
             self.refresh_groups_list()
             self.update_stats()
     
