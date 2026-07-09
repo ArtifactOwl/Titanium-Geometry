@@ -465,7 +465,7 @@ const mainImageContainerStyle = {
 const mainImageStyle = {
   width: "100%",
   height: "100%",
-  objectFit: "cover",
+  objectFit: "contain",
 };
 
 const thumbnailsStyle = {
