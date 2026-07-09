@@ -5,7 +5,7 @@ import Head from "next/head";
 const BUSINESS = {
   website: "titanium-geometry.vercel.app",
   facebook: "facebook.com/titaniumgeometry",
-  email: "titanium-geometry@gmail.com",
+  email: "titaniumgeometry@gmail.com",
   taxRate: 0.0635, // 6.35% Connecticut sales tax
 };
 
