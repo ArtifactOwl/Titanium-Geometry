@@ -86,7 +86,9 @@ export default function ReceiptPage() {
       })
     : "—";
 
-  async function buildPdf() {
+  // landscape + half => big-font "label" layout: receipt zoomed to fill the
+  // left half of a landscape Letter page. Otherwise a normal portrait receipt.
+  async function buildPdf({ landscape = false, half = false } = {}) {
     const [{ default: html2canvas }, jspdfMod] = await Promise.all([
       import("html2canvas"),
       import("jspdf"),
@@ -98,21 +100,39 @@ export default function ReceiptPage() {
       useCORS: true,
     });
     const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF({ unit: "pt", format: "letter" });
+    const pdf = new jsPDF({
+      unit: "pt",
+      format: "letter",
+      orientation: landscape ? "landscape" : "portrait",
+    });
     const pageW = pdf.internal.pageSize.getWidth();
-    const margin = 24;
-    const imgW = pageW - margin * 2;
-    const imgH = (canvas.height / canvas.width) * imgW;
-    pdf.addImage(imgData, "PNG", margin, margin, imgW, imgH);
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 18;
+    const ratio = canvas.width / canvas.height; // width / height of receipt
+
+    // Target region: whole left half (when half) or the full page.
+    const regionW = (half ? pageW / 2 : pageW) - margin * 2;
+    const regionH = pageH - margin * 2;
+
+    // Scale the receipt as large as possible inside the region (keep aspect).
+    let drawW = regionW;
+    let drawH = drawW / ratio;
+    if (drawH > regionH) {
+      drawH = regionH;
+      drawW = drawH * ratio;
+    }
+    const x = margin + (regionW - drawW) / 2; // stays within the left half
+    const y = margin + (regionH - drawH) / 2;
+    pdf.addImage(imgData, "PNG", x, y, drawW, drawH);
     return pdf;
   }
 
-  async function sharePdf() {
+  async function shareWith(opts, suffix) {
     setSharing(true);
     setNote("");
     try {
-      const pdf = await buildPdf();
-      const fileName = `receipt-${recNo || "TG"}.pdf`;
+      const pdf = await buildPdf(opts);
+      const fileName = `titaniumgeometry${recNo || "TG"}${suffix || ""}.pdf`;
       const blob = pdf.output("blob");
       const file = new File([blob], fileName, { type: "application/pdf" });
       bumpRecNo();
@@ -136,6 +156,9 @@ export default function ReceiptPage() {
     }
     setSharing(false);
   }
+
+  const sharePdf = () => shareWith({}, "");
+  const shareLabelPdf = () => shareWith({ landscape: true, half: true }, "-label");
 
   const doPrint = () => {
     bumpRecNo();
@@ -254,19 +277,26 @@ export default function ReceiptPage() {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-            <button style={{ ...btn, ...btnNew, flex: 1 }} onClick={newReceipt}>
+          <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+            <button style={{ ...btn, ...btnNew, flex: "1 1 30%" }} onClick={newReceipt}>
               New
             </button>
-            <button style={{ ...btn, ...btnPrint, flex: 1 }} onClick={doPrint}>
+            <button style={{ ...btn, ...btnPrint, flex: "1 1 30%" }} onClick={doPrint}>
               Print
             </button>
             <button
-              style={{ ...btn, ...btnShare, flex: 1.4, opacity: sharing ? 0.6 : 1 }}
+              style={{ ...btn, ...btnShare, flex: "1 1 100%", opacity: sharing ? 0.6 : 1 }}
               onClick={sharePdf}
               disabled={sharing}
             >
               {sharing ? "Preparing…" : "Share PDF"}
+            </button>
+            <button
+              style={{ ...btn, ...btnLabel, flex: "1 1 100%", opacity: sharing ? 0.6 : 1 }}
+              onClick={shareLabelPdf}
+              disabled={sharing}
+            >
+              {sharing ? "Preparing…" : "Label PDF (large font)"}
             </button>
           </div>
           {note && <p style={noteStyle}>{note}</p>}
@@ -363,6 +393,13 @@ export default function ReceiptPage() {
         <p className="no-print" style={hintStyle}>
           Tip: use your browser menu → “Add to Home Screen” to launch this like an app.
         </p>
+        <p className="no-print" style={hintStyle}>
+          Heading somewhere with no signal?{" "}
+          <a href="/receipt-offline.html" download="titaniumgeometry-receipts.html" style={{ color: "#0070ba" }}>
+            Save an offline copy
+          </a>{" "}
+          — a single file that works with no internet.
+        </p>
       </div>
     </div>
   );
@@ -457,6 +494,7 @@ const btnAdd = { background: "#eef2ff", color: "#3730a3", marginTop: 4, width: "
 const btnNew = { background: "#f3f4f6", color: "#111827", border: "1px solid #e5e7eb" };
 const btnPrint = { background: "#e5e7eb", color: "#111827" };
 const btnShare = { background: "#0070ba", color: "#fff" };
+const btnLabel = { background: "#047857", color: "#fff" };
 const noteStyle = { fontSize: "0.85rem", color: "#b45309", marginTop: 10 };
 
 const receiptStyle = {
