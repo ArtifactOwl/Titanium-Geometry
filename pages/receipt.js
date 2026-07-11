@@ -88,17 +88,26 @@ export default function ReceiptPage() {
 
   // landscape + half => big-font "label" layout: receipt zoomed to fill the
   // left half of a landscape Letter page. Otherwise a normal portrait receipt.
-  async function buildPdf({ landscape = false, half = false } = {}) {
+  async function buildPdf({ landscape = false, half = false, label = false } = {}) {
     const [{ default: html2canvas }, jspdfMod] = await Promise.all([
       import("html2canvas"),
       import("jspdf"),
     ]);
     const { jsPDF } = jspdfMod;
-    const canvas = await html2canvas(receiptRef.current, {
-      scale: 2,
-      backgroundColor: "#ffffff",
-      useCORS: true,
-    });
+    // Label mode swaps the logo for big plain text and enlarges everything,
+    // just for this capture (low-res label printer). Removed again after.
+    const el = receiptRef.current;
+    if (label) el.classList.add("label-mode");
+    let canvas;
+    try {
+      canvas = await html2canvas(el, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+      });
+    } finally {
+      if (label) el.classList.remove("label-mode");
+    }
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF({
       unit: "pt",
@@ -158,7 +167,8 @@ export default function ReceiptPage() {
   }
 
   const sharePdf = () => shareWith({}, "");
-  const shareLabelPdf = () => shareWith({ landscape: true, half: true }, "-label");
+  const shareLabelPdf = () =>
+    shareWith({ landscape: true, half: true, label: true }, "-label");
 
   const doPrint = () => {
     bumpRecNo();
@@ -305,8 +315,9 @@ export default function ReceiptPage() {
         {/* ===== Receipt (printable / shareable) ===== */}
         <section className="receipt" ref={receiptRef} style={receiptStyle}>
           <div style={rHead}>
-            <img src="/receipt-logo.png" alt="Titanium Geometry" style={rLogo} crossOrigin="anonymous" />
-            <div style={rContact}>
+            <img className="r-logo" src="/receipt-logo.png" alt="Titanium Geometry" style={rLogo} crossOrigin="anonymous" />
+            <div className="r-company">TITANIUM GEOMETRY</div>
+            <div className="r-contact" style={rContact}>
               {BUSINESS.website}
               <br />
               {BUSINESS.facebook}
@@ -315,7 +326,7 @@ export default function ReceiptPage() {
             </div>
           </div>
 
-          <div style={rMeta}>
+          <div className="r-meta" style={rMeta}>
             <div>
               <span style={metaLbl}>Receipt&nbsp;#</span> {recNo || "—"}
             </div>
@@ -324,14 +335,14 @@ export default function ReceiptPage() {
             </div>
           </div>
           {customer.trim() && (
-            <div style={rMeta}>
+            <div className="r-meta" style={rMeta}>
               <div>
                 <span style={metaLbl}>Customer</span> {customer.trim()}
               </div>
             </div>
           )}
 
-          <table style={linesTable}>
+          <table className="lines" style={linesTable}>
             <thead>
               <tr>
                 <th style={thL}>Item</th>
@@ -360,7 +371,7 @@ export default function ReceiptPage() {
             </tbody>
           </table>
 
-          <div style={totalsBox}>
+          <div className="totals" style={totalsBox}>
             <div style={tRow}>
               <span>Subtotal</span>
               <span>{money(calc.subtotal)}</span>
@@ -377,13 +388,13 @@ export default function ReceiptPage() {
               <span>Sales Tax (6.35%)</span>
               <span>{money(calc.tax)}</span>
             </div>
-            <div style={{ ...tRow, ...grandRow }}>
+            <div className="grand" style={{ ...tRow, ...grandRow }}>
               <span>Total</span>
               <span>{money(calc.total)}</span>
             </div>
           </div>
 
-          <div style={rFoot}>
+          <div className="r-foot" style={rFoot}>
             <strong>Thank you!</strong>
             <br />
             Each piece is one of a kind.
@@ -412,6 +423,27 @@ const globalCss = `
     .no-print { display: none !important; }
     .receipt { border: none !important; border-radius: 0 !important; box-shadow: none !important; }
   }
+  /* Company name text: hidden normally, shown only in label mode */
+  .r-company { display: none; }
+  /* Label mode (Label PDF only): drop the logo, big plain text for a
+     low-res label printer. !important beats the inline font sizes. */
+  .label-mode .r-logo { display: none !important; }
+  .label-mode .r-company {
+    display: block !important;
+    font-size: 2rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.02em !important;
+    color: #000 !important;
+    margin-bottom: 8px !important;
+  }
+  .label-mode .r-contact { font-size: 1.15rem !important; color: #000 !important; }
+  .label-mode .r-meta { font-size: 1.25rem !important; }
+  .label-mode table.lines,
+  .label-mode table.lines td,
+  .label-mode table.lines th { font-size: 1.3rem !important; color: #000 !important; }
+  .label-mode .totals { font-size: 1.4rem !important; max-width: none !important; }
+  .label-mode .totals .grand { font-size: 1.9rem !important; }
+  .label-mode .r-foot { font-size: 1.2rem !important; color: #000 !important; }
 `;
 
 /* ===== styles ===== */

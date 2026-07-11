@@ -54,6 +54,17 @@
     .wrap { max-width:none; }
     .receipt { border:none; border-radius:0; padding:8px 4px; }
   }
+  /* Company name text: hidden normally, shown only in label mode */
+  .r-company { display:none; }
+  /* Label mode (Label PDF only): drop the logo, big plain text for a low-res label printer */
+  .label-mode .r-head img { display:none; }
+  .label-mode .r-company { display:block; font-size:2rem; font-weight:800; letter-spacing:.02em; color:#000; margin-bottom:8px; }
+  .label-mode .r-contact { font-size:1.15rem; color:#000; }
+  .label-mode .r-meta { font-size:1.25rem; }
+  .label-mode table.lines, .label-mode table.lines td, .label-mode table.lines th { font-size:1.3rem; color:#000; }
+  .label-mode .totals { font-size:1.4rem; max-width:none; }
+  .label-mode .totals .grand { font-size:1.9rem; }
+  .label-mode .r-foot { font-size:1.2rem; color:#000; }
 </style>
 </head>
 <body>
@@ -86,6 +97,7 @@
   <section class="receipt" id="receipt">
     <div class="r-head">
       <img src="{{LOGO}}" alt="Titanium Geometry" />
+      <div class="r-company">TITANIUM GEOMETRY</div>
       <div class="r-contact" id="contactLine"></div>
     </div>
     <div class="r-meta">
@@ -198,7 +210,14 @@
   // ---- PDF (all client-side, works offline) ----
   async function buildPdf(opts) {
     opts = opts || {};
-    const canvas = await html2canvas($('receipt'), { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const el = $('receipt');
+    if (opts.label) el.classList.add('label-mode');
+    let canvas;
+    try {
+      canvas = await html2canvas(el, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    } finally {
+      if (opts.label) el.classList.remove('label-mode');
+    }
     const imgData = canvas.toDataURL('image/png');
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ unit: 'pt', format: 'letter', orientation: opts.landscape ? 'landscape' : 'portrait' });
@@ -244,7 +263,7 @@
   $('newBtn').addEventListener('click', newReceipt);
   $('printBtn').addEventListener('click', () => { bumpRecNo(); window.print(); });
   $('shareBtn').addEventListener('click', (e) => shareWith({}, '', e.target));
-  $('labelBtn').addEventListener('click', (e) => shareWith({ landscape: true, half: true }, '-label', e.target));
+  $('labelBtn').addEventListener('click', (e) => shareWith({ landscape: true, half: true, label: true }, '-label', e.target));
 
   newReceipt();
 </script>
