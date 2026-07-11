@@ -74,6 +74,9 @@
         <select id="discountType"><option value="amount">$ off</option><option value="percent">% off</option></select>
       </div>
     </div>
+    <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:.95rem; cursor:pointer;">
+      <input type="checkbox" id="taxExempt" style="width:18px; height:18px;" /> Tax exempt (no sales tax)
+    </label>
     <div class="actions">
       <button class="btn btn-new" id="newBtn" type="button">New</button>
       <button class="btn btn-print" id="printBtn" type="button">Print</button>
@@ -102,7 +105,7 @@
     <div class="totals">
       <div class="t-row"><span>Subtotal</span><span id="oSubtotal"></span></div>
       <div class="t-row" id="oDiscountRow" style="display:none;"><span id="oDiscountLbl">Discount</span><span id="oDiscount" style="color:var(--danger)"></span></div>
-      <div class="t-row"><span>Sales Tax (6.35%)</span><span id="oTax"></span></div>
+      <div class="t-row"><span id="oTaxLbl">Sales Tax (6.35%)</span><span id="oTax"></span></div>
       <div class="t-row grand"><span>Total</span><span id="oTotal"></span></div>
     </div>
     <div class="r-foot"><strong>Thank you!</strong><br />Each piece is one of a kind.</div>
@@ -161,8 +164,10 @@
     if (discount > subtotal) discount = subtotal;
     if (discount < 0) discount = 0;
     const taxable = subtotal - discount;
-    const tax = taxable * BUSINESS.taxRate;
+    const exempt = $('taxExempt').checked;
+    const tax = exempt ? 0 : taxable * BUSINESS.taxRate;
     const total = taxable + tax;
+    $('oTaxLbl').textContent = exempt ? 'Sales Tax (exempt)' : 'Sales Tax (6.35%)';
     $('oSubtotal').textContent = money(subtotal);
     if (discount > 0) {
       $('oDiscountRow').style.display = 'flex';
@@ -188,6 +193,7 @@
     addItemRow();
     $('discount').value = '0';
     $('discountType').value = 'amount';
+    $('taxExempt').checked = false;
     $('customer').value = '';
     $('recNo').value = nextRecNo();
     $('recDate').valueAsDate = new Date();
@@ -280,6 +286,7 @@
   $('addItem').addEventListener('click', () => { addItemRow(); render(); });
   $('discount').addEventListener('input', render);
   $('discountType').addEventListener('change', render);
+  $('taxExempt').addEventListener('change', render);
   ['recNo', 'recDate', 'customer'].forEach(id => $(id).addEventListener('input', render));
   $('newBtn').addEventListener('click', newReceipt);
   $('printBtn').addEventListener('click', () => { bumpRecNo(); window.print(); });

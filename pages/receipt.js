@@ -20,6 +20,7 @@ export default function ReceiptPage() {
   const [items, setItems] = useState([{ desc: "", price: "", qty: "1" }]);
   const [discount, setDiscount] = useState("0");
   const [discountType, setDiscountType] = useState("amount");
+  const [taxExempt, setTaxExempt] = useState(false);
   const [customer, setCustomer] = useState("");
   const [recNo, setRecNo] = useState("");
   const [date, setDate] = useState("");
@@ -51,10 +52,10 @@ export default function ReceiptPage() {
     if (disc > subtotal) disc = subtotal;
     if (disc < 0) disc = 0;
     const taxable = subtotal - disc;
-    const tax = taxable * BUSINESS.taxRate;
+    const tax = taxExempt ? 0 : taxable * BUSINESS.taxRate;
     const total = taxable + tax;
     return { lines, subtotal, disc, dVal, taxable, tax, total };
-  }, [items, discount, discountType]);
+  }, [items, discount, discountType, taxExempt]);
 
   const updateItem = (i, key, val) =>
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, [key]: val } : it)));
@@ -71,6 +72,7 @@ export default function ReceiptPage() {
     setItems([{ desc: "", price: "", qty: "1" }]);
     setDiscount("0");
     setDiscountType("amount");
+    setTaxExempt(false);
     setCustomer("");
     setDate(todayISO());
     const stored = parseInt(localStorage.getItem("tg_recNo") || "1000", 10);
@@ -312,6 +314,16 @@ export default function ReceiptPage() {
             </div>
           </div>
 
+          <label style={checkRowStyle}>
+            <input
+              type="checkbox"
+              checked={taxExempt}
+              onChange={(e) => setTaxExempt(e.target.checked)}
+              style={{ width: 18, height: 18 }}
+            />
+            Tax exempt (no sales tax)
+          </label>
+
           <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             <button style={{ ...btn, ...btnNew, flex: "1 1 30%" }} onClick={newReceipt}>
               New
@@ -409,7 +421,7 @@ export default function ReceiptPage() {
               </div>
             )}
             <div style={tRow}>
-              <span>Sales Tax (6.35%)</span>
+              <span>{taxExempt ? "Sales Tax (exempt)" : "Sales Tax (6.35%)"}</span>
               <span>{money(calc.tax)}</span>
             </div>
             <div className="grand" style={{ ...tRow, ...grandRow }}>
@@ -473,6 +485,14 @@ const editorH2 = {
 };
 const row2 = { display: "flex", gap: 10 };
 const lblStyle = { display: "block", fontSize: "0.8rem", color: "#6b7280", marginBottom: 4 };
+const checkRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  marginTop: 14,
+  fontSize: "0.95rem",
+  cursor: "pointer",
+};
 const inputStyle = {
   width: "100%",
   padding: 12,
