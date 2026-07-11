@@ -86,61 +86,87 @@ export default function ReceiptPage() {
       })
     : "—";
 
-  // landscape + half => big-font "label" layout: receipt zoomed to fill the
-  // left half of a landscape Letter page. Otherwise a normal portrait receipt.
-  async function buildPdf({ landscape = false, half = false, label = false } = {}) {
+  // Full letter-size receipt (screenshot of the styled receipt) for emailing.
+  async function buildPdf() {
     const [{ default: html2canvas }, jspdfMod] = await Promise.all([
       import("html2canvas"),
       import("jspdf"),
     ]);
     const { jsPDF } = jspdfMod;
-    // Label mode swaps the logo for big plain text and enlarges everything,
-    // just for this capture (low-res label printer). Removed again after.
-    const el = receiptRef.current;
-    if (label) el.classList.add("label-mode");
-    let canvas;
-    try {
-      canvas = await html2canvas(el, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-      });
-    } finally {
-      if (label) el.classList.remove("label-mode");
-    }
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF({
-      unit: "pt",
-      format: "letter",
-      orientation: landscape ? "landscape" : "portrait",
+    const canvas = await html2canvas(receiptRef.current, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      useCORS: true,
     });
+    const imgData = canvas.toDataURL("image/png");
+    const pdf = new jsPDF({ unit: "pt", format: "letter" });
     const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 18;
-    const ratio = canvas.width / canvas.height; // width / height of receipt
-
-    // Target region: whole left half (when half) or the full page.
-    const regionW = (half ? pageW / 2 : pageW) - margin * 2;
-    const regionH = pageH - margin * 2;
-
-    // Scale the receipt as large as possible inside the region (keep aspect).
-    let drawW = regionW;
-    let drawH = drawW / ratio;
-    if (drawH > regionH) {
-      drawH = regionH;
-      drawW = drawH * ratio;
-    }
-    const x = margin + (regionW - drawW) / 2; // stays within the left half
-    const y = margin + (regionH - drawH) / 2;
-    pdf.addImage(imgData, "PNG", x, y, drawW, drawH);
+    const margin = 24;
+    const imgW = pageW - margin * 2;
+    const imgH = (canvas.height / canvas.width) * imgW;
+    pdf.addImage(imgData, "PNG", margin, margin, imgW, imgH);
     return pdf;
   }
 
-  async function shareWith(opts, suffix) {
+  // Small 2 x 1.18" label, drawn as crisp vector text (not a scaled image) so
+  // it stays sharp on a low-res label printer. Best for up to ~3 items.
+  async function buildLabelPdf() {
+    const { jsPDF } = await import("jspdf");
+    const W = 144, H = 85; // 2" x 1.18" in points
+    const pdf = new jsPDF({ unit: "pt", format: [W, H], orientation: "landscape" });
+    const m = 5;
+    pdf.setTextColor(0, 0, 0);
+
+    // Header: name + receipt meta on the left, contact on the right.
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8);
+    pdf.text("Titanium Geometry", m, m + 6);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(4.2);
+    pdf.text(`Receipt #${recNo || "—"}   ${dateLabel}`, m, m + 12);
+    pdf.text([BUSINESS.website, BUSINESS.facebook, BUSINESS.email], W - m, m + 2.5, {
+      align: "right",
+      lineHeightFactor: 1.3,
+    });
+    const headTop = m + 15;
+    pdf.setLineWidth(0.6);
+    pdf.line(m, headTop, W - m, headTop);
+
+    // Items: pick the largest font that fits the available height.
+    const lines = calc.lines.length ? calc.lines : [{ desc: "—", qty: 1, lineTotal: 0 }];
+    const totalBand = 16;
+    const top = headTop + 4;
+    const bottom = H - totalBand;
+    const rowH = (bottom - top) / lines.length;
+    const fs = Math.max(7, Math.min(15, rowH * 0.6));
+    const priceW = fs * 3.4; // reserve room on the right for the amount
+    lines.forEach((l, i) => {
+      const y = top + rowH * i + rowH / 2 + fs * 0.35;
+      pdf.setFontSize(fs);
+      pdf.text(money(l.lineTotal), W - m, y, { align: "right" });
+      let desc = (l.qty > 1 ? l.qty + "× " : "") + (l.desc || "Item");
+      const maxW = W - m * 2 - priceW;
+      while (pdf.getTextWidth(desc) > maxW && desc.length > 1) desc = desc.slice(0, -2) + "…";
+      pdf.text(desc, m, y);
+    });
+
+    // Total.
+    pdf.setLineWidth(0.6);
+    pdf.line(m, bottom, W - m, bottom);
+    pdf.setFont("helvetica", "bold");
+    const tf = 12;
+    pdf.setFontSize(tf);
+    const ty = bottom + totalBand / 2 + tf * 0.35;
+    pdf.text("TOTAL", m, ty);
+    pdf.text(money(calc.total), W - m, ty, { align: "right" });
+    return pdf;
+  }
+
+  async function shareBuilt(makePdf, suffix) {
     setSharing(true);
     setNote("");
     try {
-      const pdf = await buildPdf(opts);
+      const pdf = await makePdf();
       const fileName = `titaniumgeometry${recNo || "TG"}${suffix || ""}.pdf`;
       const blob = pdf.output("blob");
       const file = new File([blob], fileName, { type: "application/pdf" });
@@ -152,7 +178,7 @@ export default function ReceiptPage() {
           text: `Receipt from Titanium Geometry`,
         });
       } else {
-        // Fallback: download the PDF, then open a pre-filled email
+        // Fallback: download the PDF, then attach it to an email manually
         pdf.save(fileName);
         setNote(
           "Sharing isn't available here, so the PDF was downloaded. Attach it to your email manually."
@@ -166,9 +192,8 @@ export default function ReceiptPage() {
     setSharing(false);
   }
 
-  const sharePdf = () => shareWith({}, "");
-  const shareLabelPdf = () =>
-    shareWith({ landscape: true, half: true, label: true }, "-label");
+  const sharePdf = () => shareBuilt(buildPdf, "");
+  const shareLabelPdf = () => shareBuilt(buildLabelPdf, "-label");
 
   const doPrint = () => {
     bumpRecNo();
@@ -306,7 +331,7 @@ export default function ReceiptPage() {
               onClick={shareLabelPdf}
               disabled={sharing}
             >
-              {sharing ? "Preparing…" : "Label PDF (large font)"}
+              {sharing ? "Preparing…" : "Label PDF (small 2×1.18″ label)"}
             </button>
           </div>
           {note && <p style={noteStyle}>{note}</p>}
@@ -316,7 +341,6 @@ export default function ReceiptPage() {
         <section className="receipt" ref={receiptRef} style={receiptStyle}>
           <div style={rHead}>
             <img className="r-logo" src="/receipt-logo.png" alt="Titanium Geometry" style={rLogo} crossOrigin="anonymous" />
-            <div className="r-company">TITANIUM GEOMETRY</div>
             <div className="r-contact" style={rContact}>
               {BUSINESS.website}
               <br />
@@ -423,27 +447,6 @@ const globalCss = `
     .no-print { display: none !important; }
     .receipt { border: none !important; border-radius: 0 !important; box-shadow: none !important; }
   }
-  /* Company name text: hidden normally, shown only in label mode */
-  .r-company { display: none; }
-  /* Label mode (Label PDF only): drop the logo, big plain text for a
-     low-res label printer. !important beats the inline font sizes. */
-  .label-mode .r-logo { display: none !important; }
-  .label-mode .r-company {
-    display: block !important;
-    font-size: 2rem !important;
-    font-weight: 800 !important;
-    letter-spacing: 0.02em !important;
-    color: #000 !important;
-    margin-bottom: 8px !important;
-  }
-  .label-mode .r-contact { font-size: 1.15rem !important; color: #000 !important; }
-  .label-mode .r-meta { font-size: 1.25rem !important; }
-  .label-mode table.lines,
-  .label-mode table.lines td,
-  .label-mode table.lines th { font-size: 1.3rem !important; color: #000 !important; }
-  .label-mode .totals { font-size: 1.4rem !important; max-width: none !important; }
-  .label-mode .totals .grand { font-size: 1.9rem !important; }
-  .label-mode .r-foot { font-size: 1.2rem !important; color: #000 !important; }
 `;
 
 /* ===== styles ===== */
