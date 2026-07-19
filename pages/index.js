@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import Head from "next/head";
 import products from "../data/products.json";
@@ -102,20 +102,7 @@ export default function Home() {
         <section style={mailingListStyle}>
           <h2 style={h2Style}>Stay Updated</h2>
           <p>Get notified when new pendants are available.</p>
-          <form 
-            action="/api/mailing-list" 
-            method="POST"
-            style={formStyle}
-          >
-            <input 
-              type="email" 
-              name="email" 
-              placeholder="your@email.com" 
-              required
-              style={inputStyle}
-            />
-            <button type="submit" style={btnPrimaryStyle}>Subscribe</button>
-          </form>
+          <MailingListSignup />
         </section>
       </main>
 
@@ -129,6 +116,70 @@ export default function Home() {
         </p>
       </footer>
     </div>
+  );
+}
+
+// Mailing list signup — posts to Formspree (same as the other forms)
+function MailingListSignup() {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState(""); // "" | "sending" | "ok" | "error"
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus("sending");
+    try {
+      const response = await fetch("https://formspree.io/f/mjgnrkoe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          _subject: "New mailing list signup - Titanium Geometry",
+          type: "mailing-list",
+          email,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && !data.errors) {
+        setStatus("ok");
+        setEmail("");
+      } else {
+        throw new Error("failed");
+      }
+    } catch (err) {
+      setStatus("error");
+    }
+  };
+
+  if (status === "ok") {
+    return (
+      <p style={{ color: "#059669", fontWeight: 500 }}>
+        ✓ Thanks for subscribing! I&apos;ll be in touch when new pieces drop.
+      </p>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} style={formStyle}>
+      <input
+        type="email"
+        name="email"
+        placeholder="your@email.com"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        style={inputStyle}
+      />
+      <button type="submit" style={btnPrimaryStyle} disabled={status === "sending"}>
+        {status === "sending" ? "…" : "Subscribe"}
+      </button>
+      {status === "error" && (
+        <p style={{ color: "#b91c1c", fontSize: "0.85rem", width: "100%", margin: "0.25rem 0 0" }}>
+          Couldn&apos;t subscribe — please email titaniumgeometry@gmail.com.
+        </p>
+      )}
+    </form>
   );
 }
 

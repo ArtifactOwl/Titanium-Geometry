@@ -16,15 +16,17 @@ export default function Commission() {
   });
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    
+    setError('');
+
     try {
-      const response = await fetch('https://formspree.io/f/xbddlgjg', {
+      const response = await fetch('https://formspree.io/f/mjgnrkoe', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
@@ -39,17 +41,18 @@ export default function Commission() {
           budget: formData.budget
         })
       });
-      
-      if (response.ok) {
+
+      // Formspree can return HTTP 200 with an error body, so check the body too.
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && !data.errors) {
         setSubmitted(true);
       } else {
         throw new Error('Form submission failed');
       }
-    } catch (error) {
-      // Fallback to mailto
-      const subject = 'Commission Request - Titanium Geometry';
-      const body = `Name: ${formData.name}\nEmail: ${formData.email}\n\nDesign Type: ${formData.designType}\n\nDescription:\n${formData.description}\n\nColors: ${formData.colors}\nSize: ${formData.size}\nBudget: ${formData.budget}`;
-      window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    } catch (err) {
+      setError(
+        `Sorry — your request couldn't be sent automatically. Please email me directly at ${CONTACT_EMAIL}.`
+      );
     }
     setSubmitting(false);
   };
@@ -204,8 +207,16 @@ export default function Commission() {
                   />
                 </label>
 
-                <button type="submit" style={submitStyle}>Send Request</button>
-                
+                <button type="submit" style={submitStyle} disabled={submitting}>
+                  {submitting ? "Sending…" : "Send Request"}
+                </button>
+
+                {error && (
+                  <p style={errorStyle}>
+                    {error}
+                  </p>
+                )}
+
                 <p style={altStyle}>
                   Or email directly: <a href={`mailto:${CONTACT_EMAIL}`} style={linkStyle}>{CONTACT_EMAIL}</a>
                 </p>
@@ -344,6 +355,16 @@ const altStyle = {
   textAlign: "center",
   marginTop: "1rem",
   color: "#6b7280",
+  fontSize: "0.9rem",
+};
+
+const errorStyle = {
+  marginTop: "1rem",
+  padding: "0.75rem 1rem",
+  background: "#fef2f2",
+  border: "1px solid #fecaca",
+  borderRadius: "6px",
+  color: "#b91c1c",
   fontSize: "0.9rem",
 };
 

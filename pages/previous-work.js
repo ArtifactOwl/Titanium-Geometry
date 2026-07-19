@@ -86,9 +86,9 @@ function PreviousWorkCard({ item, showForm, onToggleForm }) {
     e.preventDefault();
     
     try {
-      const response = await fetch('https://formspree.io/f/xbddlgjg', {
+      const response = await fetch('https://formspree.io/f/mjgnrkoe', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
@@ -102,8 +102,10 @@ function PreviousWorkCard({ item, showForm, onToggleForm }) {
           notes: formData.notes
         })
       });
-      
-      if (response.ok) {
+
+      // Formspree can return HTTP 200 with an error body, so check the body too.
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && !data.errors) {
         alert('Request sent! I\'ll be in touch soon.');
         onToggleForm();
         setFormData({ email: '', colors: '', size: '', notes: '' });
@@ -111,8 +113,7 @@ function PreviousWorkCard({ item, showForm, onToggleForm }) {
         throw new Error('Form failed');
       }
     } catch (error) {
-      // Fallback to mailto
-      window.location.href = mailtoLink;
+      alert(`Sorry — your request couldn't be sent. Please email me directly at ${CONTACT_EMAIL}.`);
     }
   };
 

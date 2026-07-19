@@ -321,17 +321,19 @@ function PendingContactForm({ productName }) {
   const [formData, setFormData] = useState({ email: '', colors: '', size: '', notes: '' });
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  
+  const [error, setError] = useState('');
+
   const emailSubject = `Interest in: ${productName}`;
   const mailtoLink = `mailto:titaniumgeometry@gmail.com?subject=${encodeURIComponent(emailSubject)}`;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
+    setError('');
     try {
-      const response = await fetch('https://formspree.io/f/xbddlgjg', {
+      const response = await fetch('https://formspree.io/f/mjgnrkoe', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
@@ -344,13 +346,15 @@ function PendingContactForm({ productName }) {
           size: formData.size
         })
       });
-      if (response.ok) {
+      // Formspree can return HTTP 200 with an error body, so check the body too.
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && !data.errors) {
         setSubmitted(true);
       } else {
         throw new Error('Form failed');
       }
-    } catch (error) {
-      window.location.href = mailtoLink;
+    } catch (err) {
+      setError("Couldn't send automatically — please use \"Email Instead\" below.");
     }
     setSubmitting(false);
   };
@@ -384,11 +388,14 @@ function PendingContactForm({ productName }) {
         style={pendingInputStyle}
       />
       <div style={{display: "flex", gap: "0.5rem"}}>
-        <button type="submit" style={pendingButtonStyle}>Send Interest</button>
+        <button type="submit" style={pendingButtonStyle} disabled={submitting}>
+          {submitting ? "Sending…" : "Send Interest"}
+        </button>
         <a href={mailtoLink} style={{...pendingButtonStyle, background: "#6b7280", textDecoration: "none", textAlign: "center"}}>
           Email Instead
         </a>
       </div>
+      {error && <p style={{color: "#b91c1c", fontSize: "0.85rem", margin: 0}}>{error}</p>}
     </form>
   );
 }
