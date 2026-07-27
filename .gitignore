@@ -1,3 +1,5 @@
 node_modules/
 .next/
 CLAUDE.md
+ai-descriptions-images/
+data/products.json.bak
