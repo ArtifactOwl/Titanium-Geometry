@@ -42,8 +42,7 @@ const COUNTRIES = [
 ];
 
 // PayPal configuration
-const PAYPAL_MERCHANT_ID = "YYH6HMQ3WFT6Q";
-const PAYPAL_EMAIL = "jaekle@gmail.com";
+const PAYPAL_EMAIL = "titaniumgeometry@gmail.com";
 
 export default function ProductPage() {
   const router = useRouter();
