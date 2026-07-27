@@ -3,3 +3,4 @@ node_modules/
 CLAUDE.md
 ai-descriptions-images/
 data/products.json.bak
+__pycache__/

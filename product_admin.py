@@ -633,6 +633,7 @@ class ProductAdminApp:
         filter_combo.bind('<<ComboboxSelected>>', lambda e: self.refresh_product_list())
         ttk.Button(filter_frame, text="Refresh", command=self.refresh_product_list).pack(side='left')
         ttk.Button(filter_frame, text="Update All Item IDs", command=self.update_all_item_ids).pack(side='right')
+        ttk.Button(filter_frame, text="Export Images for AI", command=self.export_images_for_ai).pack(side='right', padx=(0, 10))
         
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
@@ -659,7 +660,61 @@ class ProductAdminApp:
                 ttk.Button(btn_frame, text=text, command=cmd).pack(side='left', padx=3)
         
         self.refresh_product_list()
-    
+
+    def export_images_for_ai(self):
+        """Copy the primary photo of every product that still needs a description
+        into ai-descriptions-images/, renamed by folder, for uploading to ChatGPT.
+        See docs/ai-descriptions.md for the prompt and the apply step."""
+        img_exts = ('.jpg', '.jpeg', '.png', '.webp')
+
+        def needs_description(desc):
+            d = (desc or '').strip()
+            return d == '' or d.startswith('Includes:')
+
+        def primary_image(folder):
+            d = os.path.join(PENDANTS_FOLDER, folder)
+            if not os.path.isdir(d):
+                return None
+            preferred = os.path.join(d, '1.jpg')
+            if os.path.exists(preferred):
+                return preferred
+            for f in sorted(os.listdir(d)):
+                if f.lower().endswith(img_exts):
+                    return os.path.join(d, f)
+            return None
+
+        selected = [p for p in self.data['products'] if needs_description(p.get('description'))]
+        if not selected:
+            return messagebox.showinfo(
+                "Nothing to export",
+                "Every product already has a description (nothing is using the default text).")
+
+        out_dir = os.path.join(PROJECT_PATH, "ai-descriptions-images")
+        os.makedirs(out_dir, exist_ok=True)
+
+        copied, missing = [], []
+        for p in selected:
+            src = primary_image(p['folder'])
+            if not src:
+                missing.append(p['folder'])
+                continue
+            ext = os.path.splitext(src)[1].lower()
+            shutil.copy2(src, os.path.join(out_dir, p['folder'] + ext))
+            copied.append(p['folder'])
+
+        msg = f"Exported {len(copied)} image(s) to:\n{out_dir}\n\n"
+        msg += "Next: upload these to ChatGPT with the prompt in docs/ai-descriptions.md,\n"
+        msg += "then run:  python apply_descriptions.py descriptions.json"
+        if missing:
+            msg += f"\n\nNo image found for {len(missing)}: " + ", ".join(missing[:10])
+        messagebox.showinfo("Export Complete", msg)
+
+        if copied:
+            try:
+                os.startfile(out_dir)
+            except Exception:
+                pass
+
     def update_all_item_ids(self):
         count = self.assign_all_item_ids()
         self.refresh_product_list()
