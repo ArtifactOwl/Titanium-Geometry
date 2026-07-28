@@ -1,0 +1,395 @@
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import productData from "../data/products.json";
+import Header from "../components/Header";
+import { useCart } from "../lib/cart";
+import {
+  COUNTRIES,
+  PAYPAL_EMAIL,
+  SITE_URL,
+  cartTotals,
+  findCoupon,
+  money,
+} from "../lib/pricing";
+
+const CONTACT_EMAIL = "titaniumgeometry@gmail.com";
+
+export default function CartPage() {
+  const router = useRouter();
+  const { ids, add, remove, clear, loaded } = useCart();
+  const [country, setCountry] = useState("US");
+  const [codeInput, setCodeInput] = useState("");
+  const [appliedCode, setAppliedCode] = useState("");
+
+  // Support shareable links: /cart?add=G0001,G0002&code=SAVE20
+  // (handy for quoting a custom order — see docs/cart-and-coupons.md)
+  useEffect(() => {
+    if (!router.isReady || !loaded) return;
+    const { add: addParam, code } = router.query;
+    if (addParam) {
+      String(addParam)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .forEach((token) => {
+          const match = productData.products.find(
+            (p) => p.id === token || (p.itemId || "").toUpperCase() === token.toUpperCase()
+          );
+          if (match) add(match.id);
+        });
+    }
+    if (code) {
+      setCodeInput(String(code).toUpperCase());
+      setAppliedCode(String(code).toUpperCase());
+    }
+    if (addParam || code) {
+      router.replace("/cart", undefined, { shallow: true });
+    }
+  }, [router.isReady, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Resolve ids to products, splitting out anything no longer purchasable.
+  const { items, unavailable } = useMemo(() => {
+    const items = [];
+    const unavailable = [];
+    ids.forEach((id) => {
+      const p = productData.products.find((x) => x.id === id);
+      if (!p) return; // product was deleted
+      if ((p.status || "available") === "available") items.push(p);
+      else unavailable.push(p);
+    });
+    return { items, unavailable };
+  }, [ids]);
+
+  const coupon = appliedCode ? findCoupon(appliedCode) : null;
+  const totals = cartTotals(items, country, coupon);
+
+  const applyCode = (e) => {
+    e.preventDefault();
+    setAppliedCode(codeInput.trim().toUpperCase());
+  };
+  const clearCode = () => {
+    setCodeInput("");
+    setAppliedCode("");
+  };
+
+  const codeMissing = appliedCode && !coupon;
+
+  return (
+    <div style={pageStyle}>
+      <Head>
+        <title>Cart | Titanium Geometry</title>
+        <meta name="robots" content="noindex" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <Header />
+
+      <main style={mainStyle}>
+        <h1 style={h1Style}>Your Cart</h1>
+
+        {!loaded ? (
+          <p style={{ color: "#6b7280" }}>Loading…</p>
+        ) : items.length === 0 && unavailable.length === 0 ? (
+          <div style={emptyStyle}>
+            <p>Your cart is empty.</p>
+            <Link href="/shop" style={btnPrimaryStyle}>
+              Browse Pieces
+            </Link>
+          </div>
+        ) : (
+          <div style={layoutStyle}>
+            {/* Items */}
+            <div>
+              {items.map((p) => (
+                <div key={p.id} style={rowStyle}>
+                  <img src={`/pendants/${p.folder}/1.jpg`} alt={p.name} style={thumbStyle} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Link href={`/products/${p.id}`} style={itemNameStyle}>
+                      {p.name}
+                    </Link>
+                    <p style={metaStyle}>
+                      {p.group}
+                      {p.itemId ? ` · Item #${p.itemId}` : ""}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={priceStyle}>{money(p.price)}</div>
+                    <button style={removeBtnStyle} onClick={() => remove(p.id)}>
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {unavailable.length > 0 && (
+                <div style={soldNoticeStyle}>
+                  <strong>No longer available</strong>
+                  <p style={{ margin: "0.5rem 0" }}>
+                    These sold before checkout, so they&apos;ve been left out of your total:
+                  </p>
+                  {unavailable.map((p) => (
+                    <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "0.25rem 0" }}>
+                      <span>
+                        {p.name} {p.itemId ? `(#${p.itemId})` : ""}
+                      </span>
+                      <button style={removeBtnStyle} onClick={() => remove(p.id)}>
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {items.length > 0 && (
+                <button style={clearBtnStyle} onClick={clear}>
+                  Empty cart
+                </button>
+              )}
+            </div>
+
+            {/* Summary */}
+            <aside style={summaryStyle}>
+              <h2 style={summaryTitleStyle}>Order Summary</h2>
+
+              <label style={labelStyle}>Ship to:</label>
+              <select value={country} onChange={(e) => setCountry(e.target.value)} style={selectStyle}>
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code} disabled={c.disabled}>
+                    {c.name}
+                    {c.rate != null && c.rate > 0 ? ` (+$${c.rate})` : ""}
+                    {c.rate === 0 ? " (Free shipping)" : ""}
+                  </option>
+                ))}
+              </select>
+              <p style={shipNoteStyle}>Flat shipping — any number of pieces.</p>
+
+              {/* Coupon */}
+              <form onSubmit={applyCode} style={{ margin: "1rem 0" }}>
+                <label style={labelStyle}>Coupon code:</label>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <input
+                    value={codeInput}
+                    onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                    placeholder="Enter code"
+                    style={{ ...selectStyle, marginBottom: 0 }}
+                  />
+                  <button type="submit" style={applyBtnStyle}>
+                    Apply
+                  </button>
+                </div>
+                {codeMissing && <p style={errorTextStyle}>That code wasn&apos;t recognised.</p>}
+                {coupon && !totals.couponValid && <p style={errorTextStyle}>{totals.couponReason}</p>}
+                {coupon && totals.couponValid && (
+                  <p style={okTextStyle}>
+                    {coupon.code} applied{coupon.description ? ` — ${coupon.description}` : ""}.{" "}
+                    <button type="button" onClick={clearCode} style={linkBtnStyle}>
+                      remove
+                    </button>
+                  </p>
+                )}
+              </form>
+
+              <div style={totalRowStyle}>
+                <span>Subtotal ({items.length} {items.length === 1 ? "piece" : "pieces"})</span>
+                <span>{money(totals.subtotal)}</span>
+              </div>
+              {totals.discount > 0 && (
+                <div style={totalRowStyle}>
+                  <span>Discount</span>
+                  <span style={{ color: "#dc2626" }}>−{money(totals.discount)}</span>
+                </div>
+              )}
+              <div style={totalRowStyle}>
+                <span>Shipping</span>
+                <span>{totals.shipping === 0 ? "Free" : money(totals.shipping)}</span>
+              </div>
+              <div style={grandTotalStyle}>
+                <span>Total</span>
+                <span>{money(totals.total)}</span>
+              </div>
+
+              {items.length > 0 && (
+                <PayPalCartForm items={items} totals={totals} coupon={totals.couponValid ? coupon : null} />
+              )}
+              <p style={secureNoteStyle}>🔒 Secure checkout via PayPal.</p>
+              <p style={secureNoteStyle}>
+                Questions? <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: "#2563eb" }}>{CONTACT_EMAIL}</a>
+              </p>
+            </aside>
+          </div>
+        )}
+      </main>
+
+      <footer style={footerStyle}>
+        <p>
+          © {new Date().getFullYear()} Titanium Geometry |{" "}
+          <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+        </p>
+      </footer>
+    </div>
+  );
+}
+
+/**
+ * PayPal Payments Standard "cart upload": one POST carrying every line item,
+ * a single shipping charge (handling_cart) and any coupon (discount_amount_cart).
+ */
+function PayPalCartForm({ items, totals, coupon }) {
+  return (
+    <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+      <input type="hidden" name="cmd" value="_cart" />
+      <input type="hidden" name="upload" value="1" />
+      <input type="hidden" name="business" value={PAYPAL_EMAIL} />
+      <input type="hidden" name="currency_code" value="USD" />
+
+      {items.map((p, i) => (
+        <React.Fragment key={p.id}>
+          <input
+            type="hidden"
+            name={`item_name_${i + 1}`}
+            value={`${p.itemId ? p.itemId + " - " : ""}${p.name}`}
+          />
+          <input type="hidden" name={`item_number_${i + 1}`} value={p.id} />
+          <input type="hidden" name={`amount_${i + 1}`} value={Number(p.price).toFixed(2)} />
+          <input type="hidden" name={`quantity_${i + 1}`} value="1" />
+        </React.Fragment>
+      ))}
+
+      {totals.shipping > 0 && (
+        <input type="hidden" name="handling_cart" value={totals.shipping.toFixed(2)} />
+      )}
+      {totals.discount > 0 && (
+        <input type="hidden" name="discount_amount_cart" value={totals.discount.toFixed(2)} />
+      )}
+      {coupon && <input type="hidden" name="custom" value={`coupon:${coupon.code}`} />}
+
+      <input type="hidden" name="no_shipping" value="2" />
+      <input type="hidden" name="return" value={`${SITE_URL}/success`} />
+      <input type="hidden" name="cancel_return" value={`${SITE_URL}/cart`} />
+
+      <button type="submit" style={checkoutBtnStyle}>
+        Check Out — {money(totals.total)}
+      </button>
+    </form>
+  );
+}
+
+/* ===== styles ===== */
+const pageStyle = {
+  fontFamily: "'Segoe UI', system-ui, sans-serif",
+  minHeight: "100vh",
+  display: "flex",
+  flexDirection: "column",
+};
+const mainStyle = { flex: 1, padding: "2rem", maxWidth: "1100px", margin: "0 auto", width: "100%" };
+const h1Style = { fontSize: "1.75rem", marginBottom: "1.5rem" };
+const layoutStyle = { display: "grid", gridTemplateColumns: "1fr 340px", gap: "2rem", alignItems: "start" };
+const rowStyle = {
+  display: "flex",
+  gap: "1rem",
+  alignItems: "center",
+  padding: "1rem 0",
+  borderBottom: "1px solid #e5e7eb",
+};
+const thumbStyle = { width: 72, height: 72, objectFit: "cover", borderRadius: 6, background: "#f3f4f6" };
+const itemNameStyle = { fontWeight: 600, color: "#111827", textDecoration: "none" };
+const metaStyle = { color: "#6b7280", fontSize: "0.85rem", margin: "0.25rem 0 0" };
+const priceStyle = { fontWeight: 700 };
+const removeBtnStyle = {
+  background: "none",
+  border: "none",
+  color: "#dc2626",
+  cursor: "pointer",
+  fontSize: "0.85rem",
+  padding: "0.25rem 0",
+};
+const clearBtnStyle = {
+  marginTop: "1rem",
+  background: "none",
+  border: "1px solid #e5e7eb",
+  borderRadius: 6,
+  padding: "0.5rem 0.9rem",
+  cursor: "pointer",
+  color: "#374151",
+};
+const soldNoticeStyle = {
+  marginTop: "1rem",
+  background: "#fef2f2",
+  border: "1px solid #fecaca",
+  borderRadius: 8,
+  padding: "1rem",
+  color: "#7f1d1d",
+};
+const summaryStyle = { background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8, padding: "1.25rem" };
+const summaryTitleStyle = { margin: "0 0 1rem", fontSize: "1.1rem" };
+const labelStyle = { display: "block", fontWeight: 500, marginBottom: "0.35rem", fontSize: "0.9rem" };
+const selectStyle = {
+  width: "100%",
+  padding: "0.6rem",
+  border: "1px solid #d1d5db",
+  borderRadius: 6,
+  fontSize: "0.95rem",
+  marginBottom: "0.5rem",
+  background: "#fff",
+};
+const shipNoteStyle = { fontSize: "0.8rem", color: "#6b7280", margin: "0 0 0.5rem" };
+const applyBtnStyle = {
+  padding: "0.6rem 0.9rem",
+  border: "none",
+  borderRadius: 6,
+  background: "#374151",
+  color: "#fff",
+  cursor: "pointer",
+  fontWeight: 600,
+};
+const errorTextStyle = { color: "#b91c1c", fontSize: "0.85rem", margin: "0.5rem 0 0" };
+const okTextStyle = { color: "#047857", fontSize: "0.85rem", margin: "0.5rem 0 0" };
+const linkBtnStyle = {
+  background: "none",
+  border: "none",
+  color: "#2563eb",
+  cursor: "pointer",
+  padding: 0,
+  fontSize: "0.85rem",
+  textDecoration: "underline",
+};
+const totalRowStyle = { display: "flex", justifyContent: "space-between", padding: "0.3rem 0", fontSize: "0.95rem" };
+const grandTotalStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  padding: "0.75rem 0 1rem",
+  marginTop: "0.5rem",
+  borderTop: "2px solid #111827",
+  fontSize: "1.15rem",
+  fontWeight: 700,
+};
+const checkoutBtnStyle = {
+  width: "100%",
+  padding: "0.9rem",
+  fontSize: "1rem",
+  fontWeight: 700,
+  background: "#0070ba",
+  color: "#fff",
+  border: "none",
+  borderRadius: 6,
+  cursor: "pointer",
+};
+const secureNoteStyle = { fontSize: "0.8rem", color: "#6b7280", textAlign: "center", margin: "0.5rem 0 0" };
+const emptyStyle = { textAlign: "center", padding: "3rem 1rem", color: "#374151" };
+const btnPrimaryStyle = {
+  display: "inline-block",
+  marginTop: "1rem",
+  padding: "0.75rem 1.5rem",
+  background: "#111827",
+  color: "#fff",
+  textDecoration: "none",
+  borderRadius: 6,
+};
+const footerStyle = {
+  borderTop: "1px solid #e5e7eb",
+  padding: "2rem",
+  textAlign: "center",
+  color: "#6b7280",
+};

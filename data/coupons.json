@@ -1,0 +1,24 @@
+{
+  "coupons": [
+    {
+      "code": "SAVE20",
+      "description": "$20 off orders of $150 or more",
+      "type": "fixed",
+      "value": 20,
+      "minSubtotal": 150,
+      "group": null,
+      "active": false,
+      "expires": null
+    },
+    {
+      "code": "GEO10",
+      "description": "10% off Geometric Pendants",
+      "type": "percent",
+      "value": 10,
+      "minSubtotal": 0,
+      "group": "Geometric Pendants",
+      "active": false,
+      "expires": null
+    }
+  ]
+}

@@ -21,6 +21,7 @@ DATA_FILE = os.path.join(PROJECT_PATH, "data", "products.json")
 SETTINGS_FILE = os.path.join(PROJECT_PATH, "data", "admin_settings.json")
 PENDANTS_FOLDER = os.path.join(PROJECT_PATH, "public", "pendants")
 PREVIOUS_WORK_FOLDER = os.path.join(PROJECT_PATH, "public", "previous-work")
+COUPONS_FILE = os.path.join(PROJECT_PATH, "data", "coupons.json")
 
 # Item ID prefixes by group
 GROUP_PREFIXES = {
@@ -63,6 +64,7 @@ class ProductAdminApp:
         
         self.data = self.load_data()
         self.settings = self.load_settings()
+        self.coupons = self.load_coupons()
         
         self.notebook = ttk.Notebook(root)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -72,6 +74,7 @@ class ProductAdminApp:
         self.manage_tab = ttk.Frame(self.notebook)
         self.previous_work_tab = ttk.Frame(self.notebook)
         self.sales_tab = ttk.Frame(self.notebook)
+        self.coupons_tab = ttk.Frame(self.notebook)
         self.groups_tab = ttk.Frame(self.notebook)
         self.videos_tab = ttk.Frame(self.notebook)
         self.settings_tab = ttk.Frame(self.notebook)
@@ -81,6 +84,7 @@ class ProductAdminApp:
         self.notebook.add(self.manage_tab, text="  Manage Products  ")
         self.notebook.add(self.previous_work_tab, text="  Previous Work  ")
         self.notebook.add(self.sales_tab, text="  Sales/Pricing  ")
+        self.notebook.add(self.coupons_tab, text="  Coupons  ")
         self.notebook.add(self.groups_tab, text="  Groups  ")
         self.notebook.add(self.videos_tab, text="  Videos  ")
         self.notebook.add(self.settings_tab, text="  Settings  ")
@@ -90,6 +94,7 @@ class ProductAdminApp:
         self.create_manage_tab()
         self.create_previous_work_tab()
         self.create_sales_tab()
+        self.create_coupons_tab()
         self.create_groups_tab()
         self.create_videos_tab()
         self.create_settings_tab()
@@ -1624,6 +1629,186 @@ class ProductAdminApp:
             self.save_data(); self.refresh_videos_lists(); self.refresh_product_list()
 
     # ==================== SETTINGS TAB ====================
+    # ==================== COUPONS TAB ====================
+    def load_coupons(self):
+        if os.path.exists(COUPONS_FILE):
+            try:
+                with open(COUPONS_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f).get('coupons', [])
+            except Exception:
+                return []
+        return []
+
+    def save_coupons(self):
+        os.makedirs(os.path.dirname(COUPONS_FILE), exist_ok=True)
+        with open(COUPONS_FILE, 'w', encoding='utf-8') as f:
+            json.dump({"coupons": self.coupons}, f, indent=2)
+
+    def create_coupons_tab(self):
+        main_frame = ttk.Frame(self.coupons_tab, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(main_frame, text="Coupon Codes", font=('Helvetica', 16, 'bold')).pack(pady=(0, 5))
+        ttk.Label(main_frame, text="Customers enter these at checkout. Only ACTIVE codes work on the site.",
+                  foreground='gray').pack(pady=(0, 10))
+
+        columns = ('code', 'discount', 'applies', 'min', 'active', 'expires')
+        self.coupon_tree = ttk.Treeview(main_frame, columns=columns, show='headings', height=10)
+        for col, label, w in [('code', 'Code', 110), ('discount', 'Discount', 90),
+                              ('applies', 'Applies To', 170), ('min', 'Min Order', 80),
+                              ('active', 'Active', 60), ('expires', 'Expires', 90)]:
+            self.coupon_tree.heading(col, text=label)
+            self.coupon_tree.column(col, width=w)
+        self.coupon_tree.pack(fill=tk.BOTH, expand=True, pady=10)
+
+        btns = ttk.Frame(main_frame)
+        btns.pack(fill='x', pady=5)
+        for text, cmd in [("Add Coupon", self.add_coupon), ("Edit", self.edit_coupon),
+                          ("Toggle Active", self.toggle_coupon), ("Delete", self.delete_coupon)]:
+            ttk.Button(btns, text=text, command=cmd).pack(side='left', padx=3)
+
+        ttk.Label(main_frame,
+                  text="Tip: for a one-off deal, make a code just for that customer and send them\n"
+                       "a link like  /cart?add=G0001,G0002&code=THEIRCODE  (see docs/cart-and-coupons.md).",
+                  foreground='gray', justify='left').pack(anchor='w', pady=(10, 0))
+
+        self.refresh_coupon_list()
+
+    def refresh_coupon_list(self):
+        for item in self.coupon_tree.get_children():
+            self.coupon_tree.delete(item)
+        for c in self.coupons:
+            disc = f"{c.get('value', 0)}%" if c.get('type') == 'percent' else f"${c.get('value', 0)}"
+            applies = c.get('group') or "Everything"
+            minimum = f"${c.get('minSubtotal', 0)}" if c.get('minSubtotal') else "-"
+            self.coupon_tree.insert('', tk.END, iid=c.get('code'),
+                                    values=(c.get('code'), disc, applies, minimum,
+                                            "YES" if c.get('active') else "no",
+                                            c.get('expires') or "-"))
+
+    def selected_coupon(self):
+        sel = self.coupon_tree.selection()
+        if not sel:
+            messagebox.showwarning("No Selection", "Select a coupon first")
+            return None
+        return next((c for c in self.coupons if c.get('code') == sel[0]), None)
+
+    def coupon_dialog(self, existing=None):
+        win = tk.Toplevel(self.root)
+        win.title("Edit Coupon" if existing else "Add Coupon")
+        win.geometry("420x430")
+        frame = ttk.Frame(win, padding=15)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        def row(label):
+            ttk.Label(frame, text=label).pack(anchor='w')
+
+        row("Code (what the customer types):")
+        code_e = ttk.Entry(frame, width=30)
+        code_e.insert(0, (existing or {}).get('code', ''))
+        code_e.pack(anchor='w', pady=(0, 8))
+
+        row("Description (shown when applied):")
+        desc_e = ttk.Entry(frame, width=45)
+        desc_e.insert(0, (existing or {}).get('description', ''))
+        desc_e.pack(anchor='w', pady=(0, 8))
+
+        row("Discount:")
+        drow = ttk.Frame(frame); drow.pack(anchor='w', pady=(0, 8))
+        val_e = ttk.Entry(drow, width=10)
+        val_e.insert(0, str((existing or {}).get('value', '')))
+        val_e.pack(side='left')
+        type_var = tk.StringVar(value=(existing or {}).get('type', 'fixed'))
+        ttk.Radiobutton(drow, text="$ off", variable=type_var, value="fixed").pack(side='left', padx=5)
+        ttk.Radiobutton(drow, text="% off", variable=type_var, value="percent").pack(side='left', padx=5)
+
+        row("Minimum order to qualify ($, 0 = none):")
+        min_e = ttk.Entry(frame, width=15)
+        min_e.insert(0, str((existing or {}).get('minSubtotal', 0)))
+        min_e.pack(anchor='w', pady=(0, 8))
+
+        row("Limit to one category (optional):")
+        group_var = tk.StringVar(value=(existing or {}).get('group') or "Everything")
+        group_combo = ttk.Combobox(frame, textvariable=group_var, width=32,
+                                   values=["Everything"] + list(self.data['groups']), state='readonly')
+        group_combo.pack(anchor='w', pady=(0, 8))
+
+        row("Expires (YYYY-MM-DD, blank = never):")
+        exp_e = ttk.Entry(frame, width=20)
+        exp_e.insert(0, (existing or {}).get('expires') or "")
+        exp_e.pack(anchor='w', pady=(0, 8))
+
+        active_var = tk.BooleanVar(value=(existing or {}).get('active', False))
+        ttk.Checkbutton(frame, text="Active (customers can use it now)", variable=active_var).pack(anchor='w', pady=5)
+
+        def save():
+            code = code_e.get().strip().upper()
+            if not code:
+                return messagebox.showerror("Error", "Enter a code", parent=win)
+            if not existing and any(c.get('code') == code for c in self.coupons):
+                return messagebox.showerror("Error", f"'{code}' already exists", parent=win)
+            try:
+                value = float(val_e.get().strip())
+            except ValueError:
+                return messagebox.showerror("Error", "Discount must be a number", parent=win)
+            if value <= 0:
+                return messagebox.showerror("Error", "Discount must be greater than 0", parent=win)
+            try:
+                minimum = float(min_e.get().strip() or 0)
+            except ValueError:
+                return messagebox.showerror("Error", "Minimum must be a number", parent=win)
+            expires = exp_e.get().strip() or None
+            if expires and not re.fullmatch(r'\d{4}-\d{2}-\d{2}', expires):
+                return messagebox.showerror("Error", "Expiry must look like 2026-12-31", parent=win)
+
+            entry = {
+                "code": code,
+                "description": desc_e.get().strip(),
+                "type": type_var.get(),
+                "value": value,
+                "minSubtotal": minimum,
+                "group": None if group_var.get() == "Everything" else group_var.get(),
+                "active": active_var.get(),
+                "expires": expires,
+            }
+            if existing:
+                self.coupons[self.coupons.index(existing)] = entry
+            else:
+                self.coupons.append(entry)
+            self.save_coupons()
+            self.refresh_coupon_list()
+            win.destroy()
+
+        brow = ttk.Frame(frame); brow.pack(fill='x', pady=(10, 0))
+        ttk.Button(brow, text="Save", command=save).pack(side='right')
+        ttk.Button(brow, text="Cancel", command=win.destroy).pack(side='right', padx=5)
+
+    def add_coupon(self):
+        self.coupon_dialog()
+
+    def edit_coupon(self):
+        c = self.selected_coupon()
+        if c:
+            self.coupon_dialog(c)
+
+    def toggle_coupon(self):
+        c = self.selected_coupon()
+        if not c:
+            return
+        c['active'] = not c.get('active')
+        self.save_coupons()
+        self.refresh_coupon_list()
+
+    def delete_coupon(self):
+        c = self.selected_coupon()
+        if not c:
+            return
+        if not messagebox.askyesno("Confirm", f"Delete coupon '{c.get('code')}'?"):
+            return
+        self.coupons.remove(c)
+        self.save_coupons()
+        self.refresh_coupon_list()
+
     def create_settings_tab(self):
         main_frame = ttk.Frame(self.settings_tab, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)

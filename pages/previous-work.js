@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Head from "next/head";
 import products from "../data/products.json";
+import Header from "../components/Header";
 
 const CONTACT_EMAIL = "titaniumgeometry@gmail.com";
 
@@ -16,20 +17,7 @@ export default function PreviousWork() {
         <meta name="description" content="Gallery of previous titanium pendant commissions." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      {/* Header */}
-      <header style={headerStyle}>
-        <Link href="/">
-          <img src="/titanium-geometry-full-color.svg" alt="Titanium Geometry" style={{ height: 50, cursor: 'pointer' }} />
-        </Link>
-        <nav style={navStyle}>
-          <Link href="/" style={navLinkStyle}>Home</Link>
-          <Link href="/shop" style={navLinkStyle}>Shop</Link>
-          <Link href="/why-titanium" style={navLinkStyle}>Why Titanium?</Link>
-          <Link href="/previous-work" style={{...navLinkStyle, fontWeight: 700}}>Previous Work</Link>
-          <Link href="/commission" style={navLinkStyle}>Commissions</Link>
-          <Link href="/contact" style={navLinkStyle}>Contact</Link>
-        </nav>
-      </header>
+      <Header active="/previous-work" />
 
       <main style={mainStyle}>
         <h1 style={h1Style}>Previous Work</h1>
@@ -200,27 +188,8 @@ const pageStyle = {
   flexDirection: "column",
 };
 
-const headerStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "1rem 2rem",
-  borderBottom: "1px solid #e5e7eb",
-  flexWrap: "wrap",
-  gap: "1rem",
-};
 
-const navStyle = {
-  display: "flex",
-  gap: "1.5rem",
-  flexWrap: "wrap",
-};
 
-const navLinkStyle = {
-  textDecoration: "none",
-  color: "#374151",
-  fontWeight: 500,
-};
 
 const mainStyle = {
   flex: 1,

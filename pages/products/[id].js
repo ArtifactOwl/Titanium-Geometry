@@ -3,46 +3,9 @@ import { useRouter } from "next/router";
 import Link from "next/link";
 import Head from "next/head";
 import products from "../../data/products.json";
-
-// Shipping rates (USD) - US is included in base price
-const SHIPPING_RATES = {
-  US: 0,
-  CA: 10,
-  MX: 10,
-  INTERNATIONAL: 20,
-};
-
-const COUNTRIES = [
-  { code: "US", name: "United States", rate: SHIPPING_RATES.US },
-  { code: "CA", name: "Canada", rate: SHIPPING_RATES.CA },
-  { code: "MX", name: "Mexico", rate: SHIPPING_RATES.MX },
-  { code: "INT", name: "── International ──", rate: null, disabled: true },
-  { code: "AU", name: "Australia", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "AT", name: "Austria", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "BE", name: "Belgium", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "BR", name: "Brazil", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "DK", name: "Denmark", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "FI", name: "Finland", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "FR", name: "France", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "DE", name: "Germany", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "IE", name: "Ireland", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "IL", name: "Israel", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "IT", name: "Italy", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "JP", name: "Japan", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "NL", name: "Netherlands", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "NZ", name: "New Zealand", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "NO", name: "Norway", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "PL", name: "Poland", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "PT", name: "Portugal", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "ES", name: "Spain", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "SE", name: "Sweden", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "CH", name: "Switzerland", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "GB", name: "United Kingdom", rate: SHIPPING_RATES.INTERNATIONAL },
-  { code: "OTHER", name: "Other Country (+$20)", rate: SHIPPING_RATES.INTERNATIONAL },
-];
-
-// PayPal configuration
-const PAYPAL_EMAIL = "titaniumgeometry@gmail.com";
+import Header from "../../components/Header";
+import { useCart } from "../../lib/cart";
+import { COUNTRIES, PAYPAL_EMAIL, shippingFor } from "../../lib/pricing";
 
 export default function ProductPage() {
   const router = useRouter();
@@ -80,7 +43,7 @@ export default function ProductPage() {
     return <div style={pageStyle}><p>Loading...</p></div>;
   }
 
-  const shippingRate = COUNTRIES.find(c => c.code === selectedCountry)?.rate || 0;
+  const shippingRate = shippingFor(selectedCountry);
   const totalPrice = product.price + shippingRate;
 
   return (
@@ -91,20 +54,7 @@ export default function ProductPage() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      {/* Header */}
-      <header style={headerStyle}>
-        <Link href="/">
-          <img src="/titanium-geometry-full-color.svg" alt="Titanium Geometry" style={{ height: 50, cursor: 'pointer' }} />
-        </Link>
-        <nav style={navStyle}>
-          <Link href="/" style={navLinkStyle}>Home</Link>
-          <Link href="/shop" style={navLinkStyle}>Shop</Link>
-          <Link href="/why-titanium" style={navLinkStyle}>Why Titanium?</Link>
-          <Link href="/previous-work" style={navLinkStyle}>Previous Work</Link>
-          <Link href="/commission" style={navLinkStyle}>Commissions</Link>
-          <Link href="/contact" style={navLinkStyle}>Contact</Link>
-        </nav>
-      </header>
+      <Header />
 
       <main style={mainStyle}>
         {/* Breadcrumb */}
@@ -249,7 +199,9 @@ export default function ProductPage() {
                     Buy Now - ${totalPrice}
                   </button>
                 </form>
-                
+
+                <AddToCartButton product={product} />
+
                 <p style={secureNoteStyle}>
                   🔒 Secure checkout via PayPal. Pay with credit card or PayPal balance.
                 </p>
@@ -280,6 +232,41 @@ export default function ProductPage() {
     </div>
   );
 }
+
+// Add to cart, so several pieces can be bought together with one shipping charge
+function AddToCartButton({ product }) {
+  const { add, has } = useCart();
+  const inCart = has(product.id);
+
+  return (
+    <div style={{ marginBottom: "1rem" }}>
+      {inCart ? (
+        <Link href="/cart" style={{ ...addToCartStyle, background: "#047857", display: "block", textAlign: "center", textDecoration: "none" }}>
+          ✓ In your cart — view cart
+        </Link>
+      ) : (
+        <button style={addToCartStyle} onClick={() => add(product.id)}>
+          Add to Cart
+        </button>
+      )}
+      <p style={{ fontSize: "0.8rem", color: "#6b7280", textAlign: "center", margin: "0.4rem 0 0" }}>
+        Buying more than one? Add them to your cart — shipping is charged once.
+      </p>
+    </div>
+  );
+}
+
+const addToCartStyle = {
+  width: "100%",
+  padding: "0.875rem",
+  fontSize: "1rem",
+  fontWeight: 600,
+  background: "#111827",
+  color: "white",
+  border: "none",
+  borderRadius: "6px",
+  cursor: "pointer",
+};
 
 // Helper component for images with fallback
 function ImageWithFallback({ src, alt, style, onClick }) {
@@ -407,27 +394,8 @@ const pageStyle = {
   flexDirection: "column",
 };
 
-const headerStyle = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "1rem 2rem",
-  borderBottom: "1px solid #e5e7eb",
-  flexWrap: "wrap",
-  gap: "1rem",
-};
 
-const navStyle = {
-  display: "flex",
-  gap: "1.5rem",
-  flexWrap: "wrap",
-};
 
-const navLinkStyle = {
-  textDecoration: "none",
-  color: "#374151",
-  fontWeight: 500,
-};
 
 const mainStyle = {
   flex: 1,

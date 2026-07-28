@@ -1,4 +1,5 @@
 import React from "react";
+import { CartProvider } from "../lib/cart";
 
 // Global styles
 const globalStyles = `
@@ -35,9 +36,9 @@ const globalStyles = `
 
 export default function App({ Component, pageProps }) {
   return (
-    <>
+    <CartProvider>
       <style jsx global>{globalStyles}</style>
       <Component {...pageProps} />
-    </>
+    </CartProvider>
   );
 }
