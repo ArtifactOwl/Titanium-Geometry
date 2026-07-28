@@ -50,6 +50,8 @@ Care:
 FLAG_KEYS = ["sale1", "sale2", "sale3"]
 DEFAULT_FLAG_NAMES = {"sale1": "Sale 1", "sale2": "Sale 2", "sale3": "Sale 3"}
 FLAG_TARGET_PREFIX = "Flag: "
+CHECK_ON = "☑"
+CHECK_OFF = "☐"
 
 
 class ProductAdminApp:
@@ -156,10 +158,6 @@ class ProductAdminApp:
             product['flags'] = keys
         else:
             product.pop('flags', None)
-
-    def flags_display(self, product):
-        names = self.flag_names()
-        return ", ".join(names[k] for k in self.product_flags(product))
 
     def name_from_filename(self, filename):
         """Turn an image filename into a display name: drop the extension,
@@ -706,17 +704,32 @@ class ProductAdminApp:
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
-        columns = ('itemId', 'name', 'group', 'price', 'status', 'video', 'flags')
-        self.product_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=10)
-        for col, w in [('itemId', 70), ('name', 180), ('group', 110), ('price', 90), ('status', 70), ('video', 50), ('flags', 120)]:
+        columns = ('itemId', 'name', 'group', 'price', 'status', 'video') + tuple(FLAG_KEYS)
+        self.product_tree = ttk.Treeview(list_frame, columns=columns, show='headings',
+                                         height=10, selectmode='extended')
+        for col, w in [('itemId', 70), ('name', 170), ('group', 105), ('price', 85), ('status', 65), ('video', 45)]:
             self.product_tree.heading(col, text=col.replace('itemId', 'Item #').title())
             self.product_tree.column(col, width=w)
+        # One clickable checkbox column per sale flag
+        for key in FLAG_KEYS:
+            self.product_tree.heading(key, text=self.flag_label(key))
+            self.product_tree.column(key, width=80, anchor='center', stretch=False)
+        self.product_tree.bind('<Button-1>', self.on_product_tree_click)
         
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.product_tree.yview)
         self.product_tree.configure(yscrollcommand=scrollbar.set)
         self.product_tree.pack(side='left', fill=tk.BOTH, expand=True)
         scrollbar.pack(side='right', fill='y')
-        
+
+        hint_frame = ttk.Frame(main_frame)
+        hint_frame.pack(fill='x')
+        ttk.Label(hint_frame,
+                  text="Flags: click a checkbox to toggle it. Select several rows "
+                       "(Ctrl or Shift click), then click a checkbox to set them all.",
+                  foreground='gray').pack(side='left')
+        self.manage_status_var = tk.StringVar(value="")
+        ttk.Label(hint_frame, textvariable=self.manage_status_var, foreground='#0a7').pack(side='right')
+
         for row, btns in enumerate([
             [("Mark Sold", self.mark_sold), ("Mark Pending", self.mark_pending), ("Mark Available", self.mark_available), ("Delete", self.delete_product)],
             [("Edit Price", self.edit_price), ("Edit Description", self.edit_description), ("Change Group", self.change_group), ("Open Images Folder", self.open_product_folder)],
@@ -728,6 +741,69 @@ class ProductAdminApp:
                 ttk.Button(btn_frame, text=text, command=cmd).pack(side='left', padx=3)
         
         self.refresh_product_list()
+
+    def on_product_tree_click(self, event):
+        """Toggle a sale flag when its checkbox cell is clicked. If the clicked row
+        is part of a multi-row selection, every selected row is set to match."""
+        if self.product_tree.identify_region(event.x, event.y) != 'cell':
+            return
+        col_id = self.product_tree.identify_column(event.x)  # e.g. '#7'
+        try:
+            col_index = int(col_id.lstrip('#')) - 1
+        except ValueError:
+            return
+        # Tk can hand back Tcl objects here, so compare as plain strings.
+        columns = [str(c) for c in self.product_tree['columns']]
+        if not (0 <= col_index < len(columns)):
+            return
+        flag_key = columns[col_index]
+        if flag_key not in FLAG_KEYS:
+            return  # not a checkbox column — let the normal click through
+
+        row = self.product_tree.identify_row(event.y)
+        if not row:
+            return
+
+        selection = self.product_tree.selection()
+        targets = selection if (row in selection and len(selection) > 1) else (row,)
+        self.toggle_flag_for(targets, flag_key, row)
+        return 'break'  # keep the current selection instead of resetting it
+
+    def toggle_flag_for(self, product_ids, flag_key, anchor_id):
+        """Flip the flag on the clicked row, then apply that same state to every
+        target row (so a mixed selection ends up consistent)."""
+        by_id = {p['id']: p for p in self.data['products']}
+        anchor = by_id.get(anchor_id)
+        if not anchor:
+            return
+        turn_on = flag_key not in self.product_flags(anchor)
+
+        changed = 0
+        for pid in product_ids:
+            product = by_id.get(pid)
+            if not product:
+                continue
+            flags = self.product_flags(product)
+            if turn_on and flag_key not in flags:
+                flags.append(flag_key)
+            elif not turn_on and flag_key in flags:
+                flags.remove(flag_key)
+            else:
+                continue  # already in the desired state
+            self.set_product_flags(product, flags)
+            changed += 1
+
+        if not changed:
+            return
+        keep = list(product_ids)
+        self.save_data()
+        self.refresh_product_list()
+        still_there = [pid for pid in keep if self.product_tree.exists(pid)]
+        if still_there:
+            self.product_tree.selection_set(still_there)
+        label = self.flag_label(flag_key)
+        self.manage_status_var.set(
+            f"{'Set' if turn_on else 'Cleared'} {label} on {changed} product{'s' if changed != 1 else ''}")
 
     def export_images_for_ai(self):
         """Copy the primary photo of every product that still needs a description
@@ -810,7 +886,11 @@ class ProductAdminApp:
                 price_display = f"${product['salePrice']} (was ${product.get('originalPrice', product['price'])})"
             else:
                 price_display = f"${product['price']}"
-            self.product_tree.insert('', tk.END, iid=product['id'], values=(item_id, product['name'], product['group'], price_display, status, has_video, self.flags_display(product)))
+            flags = self.product_flags(product)
+            flag_cells = tuple(CHECK_ON if k in flags else CHECK_OFF for k in FLAG_KEYS)
+            self.product_tree.insert('', tk.END, iid=product['id'],
+                                     values=(item_id, product['name'], product['group'],
+                                             price_display, status, has_video) + flag_cells)
         
         self.group_combo['values'] = self.data['groups']
     
@@ -1623,6 +1703,7 @@ class ProductAdminApp:
             label = self.flag_label(key)
             self.add_flag_checks[key].config(text=label)
             self.batch_flag_checks[key].config(text=label)
+            self.product_tree.heading(key, text=label)
             self.flag_name_entries[key].delete(0, tk.END)
             self.flag_name_entries[key].insert(0, label)
         self.refresh_product_list()
