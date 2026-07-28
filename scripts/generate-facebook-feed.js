@@ -17,6 +17,7 @@ const ROOT = path.join(__dirname, "..");
 const DATA_FILE = path.join(ROOT, "data", "products.json");
 const PENDANTS_DIR = path.join(ROOT, "public", "pendants");
 const OUT_FILE = path.join(ROOT, "public", "facebook-feed.csv");
+const FLAG_SALES_FILE = path.join(ROOT, "data", "flag-sales.json");
 
 // Override with SITE_URL when the custom domain goes live.
 const SITE_URL = (process.env.SITE_URL || "https://titanium-geometry.vercel.app").replace(/\/$/, "");
@@ -43,6 +44,29 @@ const COLUMNS = [
   "google_product_category",
   "custom_label_0",
 ];
+
+const round2 = (n) => Math.round(n * 100) / 100;
+
+// Flag-driven sales, kept in step with lib/pricing.js
+let FLAG_SALES = {};
+try {
+  FLAG_SALES = JSON.parse(fs.readFileSync(FLAG_SALES_FILE, "utf8")).flagSales || {};
+} catch {
+  FLAG_SALES = {};
+}
+
+function flagDiscountFor(product, basePrice) {
+  const flags = Array.isArray(product.flags) ? product.flags : [];
+  let discount = 0;
+  for (const key of flags) {
+    const rule = FLAG_SALES[key];
+    if (!rule || rule.active === false) continue;
+    const value = Number(rule.value || 0);
+    if (value <= 0) continue;
+    discount += rule.type === "percent" ? basePrice * (value / 100) : value;
+  }
+  return round2(discount);
+}
 
 function csvEscape(value) {
   const s = value === undefined || value === null ? "" : String(value);
@@ -95,9 +119,14 @@ function main() {
       (f) => `${SITE_URL}/pendants/${encodeURIComponent(p.folder)}/${encodeURIComponent(f)}`
     );
 
-    // On sale: `price` is the regular price and `sale_price` the discounted one.
-    const onSale = p.salePrice != null && p.originalPrice != null;
-    const regular = onSale ? p.originalPrice : p.price;
+    // Prices must match the website exactly or Meta flags a mismatch.
+    // Mirrors priceInfo() in lib/pricing.js: `price` in products.json already
+    // reflects an admin sale, and a flag sale comes off on top of that.
+    const current = Number(p.price || 0);
+    const list = round2(Number(p.originalPrice != null ? p.originalPrice : current));
+    const final = round2(Math.max(0, current - flagDiscountFor(p, current)));
+    const onSale = final < list;
+    const regular = list;
 
     rows.push({
       id: p.itemId || p.id,
@@ -106,7 +135,7 @@ function main() {
       availability: (p.status || "available") === "available" ? "in stock" : "out of stock",
       condition: "new",
       price: money(regular),
-      sale_price: onSale ? money(p.salePrice) : "",
+      sale_price: onSale ? money(final) : "",
       link: `${SITE_URL}/products/${encodeURIComponent(p.id)}`,
       image_link: imageUrls[0],
       additional_image_link: imageUrls.slice(1, 1 + MAX_ADDITIONAL_IMAGES).join(","),

@@ -22,6 +22,7 @@ SETTINGS_FILE = os.path.join(PROJECT_PATH, "data", "admin_settings.json")
 PENDANTS_FOLDER = os.path.join(PROJECT_PATH, "public", "pendants")
 PREVIOUS_WORK_FOLDER = os.path.join(PROJECT_PATH, "public", "previous-work")
 COUPONS_FILE = os.path.join(PROJECT_PATH, "data", "coupons.json")
+FLAG_SALES_FILE = os.path.join(PROJECT_PATH, "data", "flag-sales.json")
 
 # Item ID prefixes by group
 GROUP_PREFIXES = {
@@ -65,6 +66,7 @@ class ProductAdminApp:
         self.data = self.load_data()
         self.settings = self.load_settings()
         self.coupons = self.load_coupons()
+        self.flag_sales = self.load_flag_sales()
         
         self.notebook = ttk.Notebook(root)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -1374,6 +1376,83 @@ class ProductAdminApp:
             os.startfile(folder)
 
     # ==================== SALES TAB ====================
+    # ---------- Flag sales (automatic discount on flagged products) ----------
+    def load_flag_sales(self):
+        default = {k: {"type": "fixed", "value": 0, "active": False} for k in FLAG_KEYS}
+        if os.path.exists(FLAG_SALES_FILE):
+            try:
+                with open(FLAG_SALES_FILE, 'r', encoding='utf-8') as f:
+                    saved = json.load(f).get('flagSales', {})
+                for k in FLAG_KEYS:
+                    if isinstance(saved.get(k), dict):
+                        default[k].update(saved[k])
+            except Exception:
+                pass
+        return default
+
+    def save_flag_sales(self):
+        os.makedirs(os.path.dirname(FLAG_SALES_FILE), exist_ok=True)
+        with open(FLAG_SALES_FILE, 'w', encoding='utf-8') as f:
+            json.dump({"flagSales": self.flag_sales}, f, indent=2)
+
+    def build_flag_sale_section(self, parent):
+        frame = ttk.LabelFrame(parent, text="Flag Sales (automatic, applied to every flagged product)", padding=15)
+        frame.pack(fill='x', pady=10)
+        ttk.Label(frame,
+                  text="Anything carrying the flag is discounted automatically — the product page shows\n"
+                       "the old price struck through with a SALE badge. Set the amount to 0 or untick\n"
+                       "Active to switch a sale off. Tag products in Manage Products.",
+                  foreground='gray', justify='left').pack(anchor='w', pady=(0, 8))
+
+        self.flag_sale_vars = {}
+        for key in FLAG_KEYS:
+            rule = self.flag_sales.get(key, {})
+            row = ttk.Frame(frame)
+            row.pack(fill='x', pady=3)
+            label = ttk.Label(row, text=self.flag_label(key), width=16)
+            label.pack(side='left')
+            amount = ttk.Entry(row, width=8)
+            amount.insert(0, str(rule.get('value', 0)))
+            amount.pack(side='left', padx=5)
+            type_var = tk.StringVar(value=rule.get('type', 'fixed'))
+            ttk.Radiobutton(row, text="$ off", variable=type_var, value="fixed").pack(side='left', padx=3)
+            ttk.Radiobutton(row, text="% off", variable=type_var, value="percent").pack(side='left', padx=3)
+            active_var = tk.BooleanVar(value=bool(rule.get('active', False)))
+            ttk.Checkbutton(row, text="Active", variable=active_var).pack(side='left', padx=8)
+            count = sum(1 for p in self.data['products'] if key in self.product_flags(p))
+            count_lbl = ttk.Label(row, text=f"{count} product(s)", foreground='gray')
+            count_lbl.pack(side='left', padx=5)
+            self.flag_sale_vars[key] = (amount, type_var, active_var, label, count_lbl)
+
+        ttk.Button(frame, text="Save Flag Sales", command=self.save_flag_sale_section).pack(anchor='w', pady=(10, 0))
+
+    def save_flag_sale_section(self):
+        updated = {}
+        for key, (amount, type_var, active_var, _, _) in self.flag_sale_vars.items():
+            try:
+                value = float(amount.get().strip() or 0)
+            except ValueError:
+                return messagebox.showerror("Error", f"{self.flag_label(key)}: amount must be a number")
+            if value < 0:
+                return messagebox.showerror("Error", f"{self.flag_label(key)}: amount can't be negative")
+            updated[key] = {"type": type_var.get(), "value": value, "active": active_var.get()}
+        self.flag_sales = updated
+        self.save_flag_sales()
+        self.refresh_flag_sale_counts()
+        live = [self.flag_label(k) for k, r in updated.items() if r['active'] and r['value'] > 0]
+        messagebox.showinfo(
+            "Done",
+            "Flag sales saved.\n\nLive: " + (", ".join(live) if live else "none") +
+            "\n\nPush to make the change appear on the site.")
+
+    def refresh_flag_sale_counts(self):
+        if not hasattr(self, 'flag_sale_vars'):
+            return
+        for key, (_, _, _, label, count_lbl) in self.flag_sale_vars.items():
+            label.config(text=self.flag_label(key))
+            count = sum(1 for p in self.data['products'] if key in self.product_flags(p))
+            count_lbl.config(text=f"{count} product(s)")
+
     def create_sales_tab(self):
         main_frame = ttk.Frame(self.sales_tab, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -1409,6 +1488,8 @@ class ProductAdminApp:
         
         ttk.Label(cat_frame, text="Sale prices show with strikethrough original price", foreground='gray').pack(anchor='w')
         
+        self.build_flag_sale_section(main_frame)
+
         sales_frame = ttk.LabelFrame(main_frame, text="Current Sale Items", padding=15)
         sales_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
@@ -1981,6 +2062,7 @@ class ProductAdminApp:
             self.flag_name_entries[key].insert(0, label)
         self.refresh_product_list()
         self.refresh_sales_list()
+        self.refresh_flag_sale_counts()
         messagebox.showinfo("Done", "Flag names saved!")
 
     def reset_std_text(self):

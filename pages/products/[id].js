@@ -5,7 +5,7 @@ import Head from "next/head";
 import products from "../../data/products.json";
 import Header from "../../components/Header";
 import { useCart } from "../../lib/cart";
-import { COUNTRIES, PAYPAL_EMAIL, shippingFor } from "../../lib/pricing";
+import { COUNTRIES, PAYPAL_EMAIL, priceInfo, round2, shippingFor } from "../../lib/pricing";
 import Footer from "../../components/Footer";
 
 export default function ProductPage() {
@@ -47,8 +47,9 @@ export default function ProductPage() {
     return <div style={pageStyle}><p>Loading...</p></div>;
   }
 
+  const pricing = priceInfo(product);
   const shippingRate = shippingFor(selectedCountry);
-  const totalPrice = product.price + shippingRate;
+  const totalPrice = round2(pricing.final + shippingRate);
 
   return (
     <div style={pageStyle}>
@@ -135,14 +136,17 @@ export default function ProductPage() {
               </div>
             ) : (
               <>
-                {product.salePrice && product.originalPrice ? (
+                {pricing.onSale ? (
                   <div style={priceStyle}>
-                    <span style={salePriceStyle}>${product.salePrice}</span>
-                    <span style={originalPriceStyle}>${product.originalPrice}</span>
+                    <span style={salePriceStyle}>${pricing.final}</span>
+                    <span style={originalPriceStyle}>${pricing.list}</span>
                     <span style={saleBadgeStyle}>SALE</span>
+                    <div style={savingsStyle}>
+                      You save ${(pricing.list - pricing.final).toFixed(2)}
+                    </div>
                   </div>
                 ) : (
-                  <p style={priceStyle}>${product.price}</p>
+                  <p style={priceStyle}>${pricing.final}</p>
                 )}
                 
                 {product.itemId && (
@@ -511,11 +515,19 @@ const originalPriceStyle = {
 const saleBadgeStyle = {
   background: "#dc2626",
   color: "white",
-  padding: "0.2rem 0.5rem",
+  padding: "0.3rem 0.7rem",
   borderRadius: "4px",
-  fontSize: "0.75rem",
+  fontSize: "0.95rem",
   fontWeight: "bold",
+  letterSpacing: "0.06em",
   verticalAlign: "middle",
+};
+
+const savingsStyle = {
+  color: "#dc2626",
+  fontSize: "0.95rem",
+  fontWeight: 600,
+  marginTop: "0.35rem",
 };
 
 const itemIdStyle = {

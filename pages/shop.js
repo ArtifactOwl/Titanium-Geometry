@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import products from "../data/products.json";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { priceInfo } from "../lib/pricing";
 
 export default function Shop() {
   const router = useRouter();
@@ -106,7 +107,18 @@ function ProductCard({ product, sold }) {
         </div>
         <h3 style={cardTitleStyle}>{product.name}</h3>
         <p style={cardGroupStyle}>{product.group}</p>
-        <p style={cardPriceStyle}>${product.price}</p>
+        {(() => {
+          const pricing = priceInfo(product);
+          return pricing.onSale ? (
+            <p style={cardPriceStyle}>
+              <span style={{ color: "#dc2626" }}>${pricing.final}</span>{" "}
+              <span style={cardWasStyle}>${pricing.list}</span>{" "}
+              <span style={cardSaleBadgeStyle}>SALE</span>
+            </p>
+          ) : (
+            <p style={cardPriceStyle}>${pricing.final}</p>
+          );
+        })()}
       </div>
     </Link>
   );
@@ -244,6 +256,23 @@ const cardPriceStyle = {
   margin: "0.5rem 1rem 1rem",
   fontWeight: "bold",
   fontSize: "1.1rem",
+};
+
+const cardWasStyle = {
+  textDecoration: "line-through",
+  color: "#9ca3af",
+  fontWeight: "normal",
+  fontSize: "0.95rem",
+};
+
+const cardSaleBadgeStyle = {
+  background: "#dc2626",
+  color: "white",
+  padding: "0.1rem 0.4rem",
+  borderRadius: "4px",
+  fontSize: "0.7rem",
+  fontWeight: "bold",
+  verticalAlign: "middle",
 };
 
 const emptyStyle = {

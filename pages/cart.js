@@ -12,8 +12,10 @@ import {
   PAYPAL_EMAIL,
   SITE_URL,
   cartTotals,
+  effectivePrice,
   findCoupon,
   money,
+  priceInfo,
 } from "../lib/pricing";
 
 const CONTACT_EMAIL = "titaniumgeometry@gmail.com";
@@ -114,7 +116,16 @@ export default function CartPage() {
                     </p>
                   </div>
                   <div style={{ textAlign: "right" }}>
-                    <div style={priceStyle}>{money(p.price)}</div>
+                    <div style={priceStyle}>
+                      {priceInfo(p).onSale ? (
+                        <>
+                          <span style={{ color: "#dc2626" }}>{money(priceInfo(p).final)}</span>{" "}
+                          <span style={wasStyle}>{money(priceInfo(p).list)}</span>
+                        </>
+                      ) : (
+                        money(priceInfo(p).final)
+                      )}
+                    </div>
                     <button style={removeBtnStyle} onClick={() => remove(p.id)}>
                       Remove
                     </button>
@@ -252,7 +263,7 @@ function PayPalCartForm({ items, totals, coupon }) {
             value={`${p.itemId ? p.itemId + " - " : ""}${p.name}`}
           />
           <input type="hidden" name={`item_number_${i + 1}`} value={p.id} />
-          <input type="hidden" name={`amount_${i + 1}`} value={Number(p.price).toFixed(2)} />
+          <input type="hidden" name={`amount_${i + 1}`} value={effectivePrice(p).toFixed(2)} />
           <input type="hidden" name={`quantity_${i + 1}`} value="1" />
         </React.Fragment>
       ))}
@@ -297,6 +308,7 @@ const thumbStyle = { width: 72, height: 72, objectFit: "cover", borderRadius: 6,
 const itemNameStyle = { fontWeight: 600, color: "#111827", textDecoration: "none" };
 const metaStyle = { color: "#6b7280", fontSize: "0.85rem", margin: "0.25rem 0 0" };
 const priceStyle = { fontWeight: 700 };
+const wasStyle = { textDecoration: "line-through", color: "#9ca3af", fontWeight: 400, fontSize: "0.85rem" };
 const removeBtnStyle = {
   background: "none",
   border: "none",
