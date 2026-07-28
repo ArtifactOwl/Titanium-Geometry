@@ -3,7 +3,8 @@
     "Molecules",
     "Geometric Pendants",
     "Organic and Other Pendants",
-    "Judaic"
+    "Judaic",
+    "Knives & Tools"
   ],
   "categoryImages": {
     "Molecules": "/categories/molecules.jpg",
@@ -242,6 +243,339 @@
       "status": "available",
       "itemId": "O0004",
       "created": "2026-07-07"
+    },
+    {
+      "id": "sacred-geometry-pocket-knife",
+      "name": "Sacred Geometry Pocket Knife",
+      "description": "Titanium Handles with a Stainless steel engraved blade.  Overall 4.5\", blade is 1.7\".\n\nIncludes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 70.0,
+      "group": "Knives & Tools",
+      "folder": "sacred-geometry-pocket-knife",
+      "status": "available",
+      "itemId": "X0001",
+      "created": "2026-07-27"
+    },
+    {
+      "id": "aj-stoner-collaboration-pendant",
+      "name": "AJ Stoner Collaboration Pendant",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "aj-stoner-collaboration-pendant",
+      "status": "available",
+      "itemId": "G0017",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "balance-of-symmetry",
+      "name": "Balance Of Symmetry",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "balance-of-symmetry",
+      "status": "available",
+      "itemId": "G0018",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "circle-intersections-gold",
+      "name": "Circle Intersections Gold",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "circle-intersections-gold",
+      "status": "available",
+      "itemId": "G0019",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "circle-intersections-red-blue",
+      "name": "Circle Intersections Red Blue",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "circle-intersections-red-blue",
+      "status": "available",
+      "itemId": "G0020",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "hypercube-purple-gold",
+      "name": "Hypercube Purple & Gold",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "hypercube-purple-gold",
+      "status": "available",
+      "itemId": "G0021",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "intricate-blue-violet-mandala",
+      "name": "Intricate Blue & Violet Mandala",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "intricate-blue-violet-mandala",
+      "status": "available",
+      "itemId": "G0022",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "intricate-mandala-multicolor",
+      "name": "Intricate Mandala Multicolor",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "intricate-mandala-multicolor",
+      "status": "available",
+      "itemId": "G0023",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "intricate-rainbow-mandala",
+      "name": "Intricate Rainbow Mandala",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "intricate-rainbow-mandala",
+      "status": "available",
+      "itemId": "G0024",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "nova-genesis-blue",
+      "name": "Nova Genesis Blue",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "nova-genesis-blue",
+      "status": "available",
+      "itemId": "G0025",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "nova-genesis-gold",
+      "name": "Nova Genesis Gold",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "nova-genesis-gold",
+      "status": "available",
+      "itemId": "G0026",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "organic-crystal-blue",
+      "name": "Organic Crystal Blue",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "organic-crystal-blue",
+      "status": "available",
+      "itemId": "G0027",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "organic-structure",
+      "name": "Organic Structure",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "organic-structure",
+      "status": "available",
+      "itemId": "G0028",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "rainbow-spiral",
+      "name": "Rainbow Spiral",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "rainbow-spiral",
+      "status": "available",
+      "itemId": "G0029",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "swords-of-silence-gold",
+      "name": "Swords Of Silence Gold",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "swords-of-silence-gold",
+      "status": "available",
+      "itemId": "G0030",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "swords-of-silence-purple-red",
+      "name": "Swords Of Silence Purple & Red",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "swords-of-silence-purple-red",
+      "status": "available",
+      "itemId": "G0031",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "the-network-purple-blue",
+      "name": "The Network Purple & Blue",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Geometric Pendants",
+      "folder": "the-network-purple-blue",
+      "status": "available",
+      "itemId": "G0032",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "biomechanical-being",
+      "name": "Biomechanical Being",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Organic and Other Pendants",
+      "folder": "biomechanical-being",
+      "status": "available",
+      "itemId": "O0005",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "biomechanical-giger-titanium-whistle",
+      "name": "Biomechanical Giger Titanium Whistle",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Organic and Other Pendants",
+      "folder": "biomechanical-giger-titanium-whistle",
+      "status": "available",
+      "itemId": "O0006",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "coin-octopus-entrance",
+      "name": "COIN - Octopus Entrance",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Organic and Other Pendants",
+      "folder": "coin-octopus-entrance",
+      "status": "available",
+      "itemId": "O0007",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "falcon-fire",
+      "name": "Falcon Fire",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Organic and Other Pendants",
+      "folder": "falcon-fire",
+      "status": "available",
+      "itemId": "O0008",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "roboctopus",
+      "name": "Roboctopus",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Organic and Other Pendants",
+      "folder": "roboctopus",
+      "status": "available",
+      "itemId": "O0009",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "the-fractal-wave",
+      "name": "The Fractal Wave",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Organic and Other Pendants",
+      "folder": "the-fractal-wave",
+      "status": "available",
+      "itemId": "O0010",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
+    },
+    {
+      "id": "tree-frog-rainbow",
+      "name": "Tree Frog Rainbow",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 85.0,
+      "group": "Organic and Other Pendants",
+      "folder": "tree-frog-rainbow",
+      "status": "available",
+      "itemId": "O0011",
+      "created": "2026-07-28",
+      "flags": [
+        "sale1"
+      ]
     }
   ],
   "previousWork": [
