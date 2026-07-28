@@ -705,6 +705,7 @@ class ProductAdminApp:
         ttk.Button(filter_frame, text="Refresh", command=self.refresh_product_list).pack(side='left')
         ttk.Button(filter_frame, text="Update All Item IDs", command=self.update_all_item_ids).pack(side='right')
         ttk.Button(filter_frame, text="Export Images for AI", command=self.export_images_for_ai).pack(side='right', padx=(0, 10))
+        ttk.Button(filter_frame, text="Fix Image Names", command=self.fix_image_names).pack(side='right', padx=(0, 10))
         
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
@@ -809,6 +810,93 @@ class ProductAdminApp:
         label = self.flag_label(flag_key)
         self.manage_status_var.set(
             f"{'Set' if turn_on else 'Cleared'} {label} on {changed} product{'s' if changed != 1 else ''}")
+
+    def fix_image_names(self):
+        """The website only shows images named 1.jpg, 2.jpg, ... — anything else
+        (camera names like 20260129_105720.jpg) is invisible. This renames those
+        into the lowest free numbers so they show up on the product page."""
+        img_exts = ('.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif')
+        numbered = re.compile(r'^(\d+)\.jpg$', re.IGNORECASE)
+
+        try:
+            from PIL import Image as PILImage
+            have_pil = True
+        except ImportError:
+            have_pil = False
+
+        plan = []          # (folder, old_name, new_name, needs_convert)
+        needs_convert = 0
+        for product in self.data['products']:
+            folder = os.path.join(PENDANTS_FOLDER, product['folder'])
+            if not os.path.isdir(folder):
+                continue
+            files = [f for f in os.listdir(folder)
+                     if os.path.splitext(f)[1].lower() in img_exts]
+            used = set()
+            odd = []
+            for f in files:
+                m = numbered.match(f)
+                if m:
+                    used.add(int(m.group(1)))
+                else:
+                    odd.append(f)
+            if not odd:
+                continue
+            next_num = 1
+            for old in sorted(odd):
+                while next_num in used:
+                    next_num += 1
+                used.add(next_num)
+                convert = os.path.splitext(old)[1].lower() != '.jpg'
+                if convert:
+                    needs_convert += 1
+                plan.append((product, old, f"{next_num}.jpg", convert))
+
+        if not plan:
+            return messagebox.showinfo(
+                "Nothing to fix",
+                "Every image is already named 1.jpg, 2.jpg, ... so they all show on the site.")
+
+        if needs_convert and not have_pil:
+            return messagebox.showerror(
+                "Pillow required",
+                f"{needs_convert} image(s) aren't JPGs and need converting so the site can\n"
+                "show them. Install Pillow first:\n\n    pip install Pillow")
+
+        preview = "\n".join(
+            f"  {p['itemId']}  {old}  ->  {new}" for p, old, new, _ in plan[:15])
+        if len(plan) > 15:
+            preview += f"\n  ...and {len(plan) - 15} more"
+        if not messagebox.askyesno(
+                "Rename these images?",
+                f"{len(plan)} image(s) in {len({p['id'] for p, _, _, _ in plan})} product(s) "
+                f"will be renamed so the website shows them:\n\n{preview}\n\nGo ahead?"):
+            return
+
+        renamed, failed = 0, []
+        for product, old, new, convert in plan:
+            folder = os.path.join(PENDANTS_FOLDER, product['folder'])
+            src = os.path.join(folder, old)
+            dst = os.path.join(folder, new)
+            try:
+                if os.path.exists(dst):        # shouldn't happen, but never overwrite
+                    failed.append(f"{product['itemId']} {old} (target {new} exists)")
+                    continue
+                if convert:
+                    img = PILImage.open(src)
+                    img = self.batch_fix_orientation(img)
+                    img.convert('RGB').save(dst, 'JPEG', quality=95)
+                    os.remove(src)
+                else:
+                    os.rename(src, dst)
+                renamed += 1
+            except Exception as e:
+                failed.append(f"{product['itemId']} {old} ({e})")
+
+        msg = f"Renamed {renamed} image(s).\n\nThey'll appear on the product pages after you push."
+        if failed:
+            msg += "\n\nCouldn't rename:\n" + "\n".join(failed[:10])
+        messagebox.showinfo("Done", msg)
 
     def export_images_for_ai(self):
         """Copy the primary photo of every product that still needs a description

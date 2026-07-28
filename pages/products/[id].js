@@ -27,9 +27,12 @@ export default function ProductPage() {
       // For now, assume images are numbered 1.jpg, 2.jpg, etc.
       // and videos are 1.mp4, 2.mp4, etc.
       if (found) {
-        // Try to load images 1-10
+        // Images are numbered 1.jpg, 2.jpg, ... — anything missing hides itself.
+        // Keep MAX_IMAGES at least as high as the largest folder (see the
+        // "Fix Image Names" button in product_admin.py).
+        const MAX_IMAGES = 20;
         const possibleImages = [];
-        for (let i = 1; i <= 10; i++) {
+        for (let i = 1; i <= MAX_IMAGES; i++) {
           possibleImages.push(`/pendants/${found.folder}/${i}.jpg`);
         }
         setImages(possibleImages);
@@ -82,7 +85,7 @@ export default function ProductPage() {
             
             {/* Thumbnails */}
             <div style={thumbnailsStyle}>
-              {images.slice(0, 5).map((img, idx) => (
+              {images.map((img, idx) => (
                 <ImageWithFallback
                   key={idx}
                   src={img}
@@ -444,6 +447,7 @@ const mainImageStyle = {
 const thumbnailsStyle = {
   display: "flex",
   gap: "0.5rem",
+  flexWrap: "wrap",
 };
 
 const thumbnailStyle = {
