@@ -44,6 +44,13 @@ Care:
 • Titanium is hypoallergenic and will not tarnish
 • Clean with mild soap and water"""
 
+# Sale flags: internal keys never change (they're what's stored in products.json);
+# the display names are editable in the Settings tab. Flags are admin-only —
+# nothing on the website renders them.
+FLAG_KEYS = ["sale1", "sale2", "sale3"]
+DEFAULT_FLAG_NAMES = {"sale1": "Sale 1", "sale2": "Sale 2", "sale3": "Sale 3"}
+FLAG_TARGET_PREFIX = "Flag: "
+
 
 class ProductAdminApp:
     def __init__(self, root):
@@ -110,7 +117,8 @@ class ProductAdminApp:
         else:
             return {
                 "standardText": DEFAULT_STANDARD_TEXT,
-                "includeStandardTextByDefault": True
+                "includeStandardTextByDefault": True,
+                "flagNames": dict(DEFAULT_FLAG_NAMES)
             }
     
     def save_settings(self):
@@ -123,6 +131,35 @@ class ProductAdminApp:
         text = re.sub(r'[^\w\s-]', '', text)
         text = re.sub(r'[-\s]+', '-', text)
         return text
+
+    # ---------- Sale flags ----------
+    def flag_names(self):
+        """Display names for each flag key, falling back to the defaults."""
+        saved = self.settings.get('flagNames', {}) or {}
+        return {k: (saved.get(k) or DEFAULT_FLAG_NAMES[k]).strip() or DEFAULT_FLAG_NAMES[k]
+                for k in FLAG_KEYS}
+
+    def flag_label(self, key):
+        return self.flag_names().get(key, key)
+
+    def product_flags(self, product):
+        """The flag keys set on a product (tolerates missing/malformed data)."""
+        flags = product.get('flags') or []
+        if not isinstance(flags, list):
+            return []
+        return [f for f in FLAG_KEYS if f in flags]
+
+    def set_product_flags(self, product, keys):
+        """Store flags on a product, keeping products.json clean when empty."""
+        keys = [k for k in FLAG_KEYS if k in keys]
+        if keys:
+            product['flags'] = keys
+        else:
+            product.pop('flags', None)
+
+    def flags_display(self, product):
+        names = self.flag_names()
+        return ", ".join(names[k] for k in self.product_flags(product))
 
     def name_from_filename(self, filename):
         """Turn an image filename into a display name: drop the extension,
@@ -242,6 +279,18 @@ class ProductAdminApp:
         self.std_preview.pack(fill='x', pady=(5, 0))
         self.update_std_preview()
         
+        # Sale flags (admin-only grouping, not shown on the website)
+        self.add_flag_vars = {}
+        flag_frame = ttk.LabelFrame(main_frame, text="Sale Flags (not shown on the website)", padding=8)
+        flag_frame.pack(fill='x', pady=(0, 10))
+        self.add_flag_checks = {}
+        for key in FLAG_KEYS:
+            var = tk.BooleanVar(value=False)
+            cb = ttk.Checkbutton(flag_frame, text=self.flag_label(key), variable=var)
+            cb.pack(side='left', padx=8)
+            self.add_flag_vars[key] = var
+            self.add_flag_checks[key] = cb
+
         ttk.Label(main_frame, text="YouTube Video URL (optional):").pack(anchor='w')
         self.youtube_entry = ttk.Entry(main_frame, width=50)
         self.youtube_entry.pack(fill='x', pady=(0, 10))
@@ -329,7 +378,8 @@ class ProductAdminApp:
                    "itemId": item_id,
                    "created": datetime.now().strftime("%Y-%m-%d")}
         if youtube_id: product["youtubeId"] = youtube_id
-        
+        self.set_product_flags(product, [k for k, v in self.add_flag_vars.items() if v.get()])
+
         self.data['products'].append(product)
         self.save_data()
         
@@ -411,8 +461,21 @@ class ProductAdminApp:
         
         # Standard text checkbox
         self.batch_include_std_var = tk.BooleanVar(value=self.settings.get('includeStandardTextByDefault', True))
-        ttk.Checkbutton(settings_frame, text="Include standard text in description", 
+        ttk.Checkbutton(settings_frame, text="Include standard text in description",
                        variable=self.batch_include_std_var).pack(anchor='w', pady=5)
+
+        # Sale flags applied to every product in the batch
+        flag_row = ttk.Frame(settings_frame)
+        flag_row.pack(fill='x', pady=5)
+        ttk.Label(flag_row, text="Sale flags:", width=12).pack(side='left')
+        self.batch_flag_vars = {}
+        self.batch_flag_checks = {}
+        for key in FLAG_KEYS:
+            var = tk.BooleanVar(value=False)
+            cb = ttk.Checkbutton(flag_row, text=self.flag_label(key), variable=var)
+            cb.pack(side='left', padx=8)
+            self.batch_flag_vars[key] = var
+            self.batch_flag_checks[key] = cb
         
         # Preview
         preview_frame = ttk.LabelFrame(main_frame, text="Preview", padding=10)
@@ -541,9 +604,13 @@ class ProductAdminApp:
         else:
             description = base_desc
         
+        batch_flags = [k for k, v in self.batch_flag_vars.items() if v.get()]
+        flags_note = ", ".join(self.flag_label(k) for k in batch_flags) or "none"
+
         # Confirm
-        if not messagebox.askyesno("Confirm", 
-            f"Create {len(self.batch_image_files)} products?\n\nGroup: {group}\nPrice: ${price}\nName by: {name_mode}"):
+        if not messagebox.askyesno("Confirm",
+            f"Create {len(self.batch_image_files)} products?\n\nGroup: {group}\nPrice: ${price}\n"
+            f"Name by: {name_mode}\nSale flags: {flags_note}"):
             return
         
         # Try to import PIL for image processing
@@ -595,6 +662,7 @@ class ProductAdminApp:
                        "group": group, "folder": slug, "status": "available",
                        "itemId": item_id,
                        "created": datetime.now().strftime("%Y-%m-%d")}
+            self.set_product_flags(product, batch_flags)
             self.data['products'].append(product)
             created += 1
         
@@ -638,9 +706,9 @@ class ProductAdminApp:
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
-        columns = ('itemId', 'name', 'group', 'price', 'status', 'video')
+        columns = ('itemId', 'name', 'group', 'price', 'status', 'video', 'flags')
         self.product_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=10)
-        for col, w in [('itemId', 70), ('name', 180), ('group', 110), ('price', 90), ('status', 70), ('video', 50)]:
+        for col, w in [('itemId', 70), ('name', 180), ('group', 110), ('price', 90), ('status', 70), ('video', 50), ('flags', 120)]:
             self.product_tree.heading(col, text=col.replace('itemId', 'Item #').title())
             self.product_tree.column(col, width=w)
         
@@ -652,7 +720,7 @@ class ProductAdminApp:
         for row, btns in enumerate([
             [("Mark Sold", self.mark_sold), ("Mark Pending", self.mark_pending), ("Mark Available", self.mark_available), ("Delete", self.delete_product)],
             [("Edit Price", self.edit_price), ("Edit Description", self.edit_description), ("Change Group", self.change_group), ("Open Images Folder", self.open_product_folder)],
-            [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous)]
+            [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous), ("Edit Flags", self.edit_flags)]
         ]):
             btn_frame = ttk.Frame(main_frame)
             btn_frame.pack(fill='x', pady=3)
@@ -742,7 +810,7 @@ class ProductAdminApp:
                 price_display = f"${product['salePrice']} (was ${product.get('originalPrice', product['price'])})"
             else:
                 price_display = f"${product['price']}"
-            self.product_tree.insert('', tk.END, iid=product['id'], values=(item_id, product['name'], product['group'], price_display, status, has_video))
+            self.product_tree.insert('', tk.END, iid=product['id'], values=(item_id, product['name'], product['group'], price_display, status, has_video, self.flags_display(product)))
         
         self.group_combo['values'] = self.data['groups']
     
@@ -786,6 +854,40 @@ class ProductAdminApp:
         self.save_data(); self.refresh_product_list()
         messagebox.showinfo("Done", "Product deleted")
     
+    def edit_flags(self):
+        pid = self.get_selected_product()
+        if not pid: return
+        product = next((p for p in self.data['products'] if p['id'] == pid), None)
+        if not product: return
+
+        win = tk.Toplevel(self.root)
+        win.title(f"Sale Flags - {product['name']}")
+        win.geometry("340x220")
+        frame = ttk.Frame(win, padding=15)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(frame, text=product['name'], font=('Helvetica', 11, 'bold')).pack(anchor='w')
+        ttk.Label(frame, text="Flags group items for sales. They are never shown on the website.",
+                  foreground='gray', wraplength=300).pack(anchor='w', pady=(0, 10))
+
+        current = self.product_flags(product)
+        vars_ = {}
+        for key in FLAG_KEYS:
+            var = tk.BooleanVar(value=key in current)
+            ttk.Checkbutton(frame, text=self.flag_label(key), variable=var).pack(anchor='w', pady=2)
+            vars_[key] = var
+
+        def save():
+            self.set_product_flags(product, [k for k, v in vars_.items() if v.get()])
+            self.save_data()
+            self.refresh_product_list()
+            win.destroy()
+
+        btns = ttk.Frame(frame)
+        btns.pack(fill='x', pady=(12, 0))
+        ttk.Button(btns, text="Save", command=save).pack(side='right')
+        ttk.Button(btns, text="Cancel", command=win.destroy).pack(side='right', padx=5)
+
     def edit_price(self):
         pid = self.get_selected_product()
         if not pid: return
@@ -1110,12 +1212,13 @@ class ProductAdminApp:
         
         row1 = ttk.Frame(cat_frame)
         row1.pack(fill='x', pady=5)
-        ttk.Label(row1, text="Category:").pack(side='left')
+        ttk.Label(row1, text="Apply to:").pack(side='left')
         self.sale_cat_var = tk.StringVar()
-        self.sale_cat_combo = ttk.Combobox(row1, textvariable=self.sale_cat_var, width=25)
-        self.sale_cat_combo['values'] = ["All Products"] + self.data['groups']
+        self.sale_cat_combo = ttk.Combobox(row1, textvariable=self.sale_cat_var, width=30, state='readonly')
+        self.sale_cat_combo['values'] = self.sale_target_values()
         self.sale_cat_combo.current(0)
         self.sale_cat_combo.pack(side='left', padx=10)
+        ttk.Label(row1, text="(flags span categories)", foreground='gray').pack(side='left')
         
         row2 = ttk.Frame(cat_frame)
         row2.pack(fill='x', pady=5)
@@ -1150,19 +1253,37 @@ class ProductAdminApp:
         
         self.refresh_sales_list()
     
+    def sale_target_values(self):
+        """Dropdown options: all products, each category, then each sale flag."""
+        return (["All Products"] + list(self.data['groups'])
+                + [FLAG_TARGET_PREFIX + self.flag_label(k) for k in FLAG_KEYS])
+
+    def resolve_flag_target(self, target):
+        """If the selection is a flag option, return its flag key, else None."""
+        if not target.startswith(FLAG_TARGET_PREFIX):
+            return None
+        label = target[len(FLAG_TARGET_PREFIX):]
+        for key in FLAG_KEYS:
+            if self.flag_label(key) == label:
+                return key
+        return None
+
     def apply_sale(self):
         try: discount = float(self.discount_entry.get())
         except ValueError: return messagebox.showerror("Error", "Enter a valid discount number")
         if discount <= 0: return messagebox.showerror("Error", "Discount must be > 0")
-        
+
         category = self.sale_cat_var.get()
+        flag_key = self.resolve_flag_target(category)
         dtype = self.discount_type.get()
         count = 0
-        
+
         for product in self.data['products']:
             if product.get('status') == 'sold': continue
-            if category != "All Products" and product['group'] != category: continue
-            
+            if flag_key:
+                if flag_key not in self.product_flags(product): continue
+            elif category != "All Products" and product['group'] != category: continue
+
             orig = product.get('originalPrice', product['price'])
             if dtype == "percent": new = round(orig * (1 - discount/100), 2)
             else: new = round(orig - discount, 2)
@@ -1173,8 +1294,15 @@ class ProductAdminApp:
             product['price'] = new
             count += 1
         
+        if count == 0:
+            return messagebox.showwarning(
+                "Nothing matched",
+                f"No unsold products matched '{category}'.\n\n"
+                "If you targeted a flag, set that flag on the products first "
+                "(Manage Products > Edit Flags).")
+
         self.save_data(); self.refresh_sales_list(); self.refresh_product_list()
-        messagebox.showinfo("Done", f"Applied {discount}{'%' if dtype == 'percent' else '$'} discount to {count} products")
+        messagebox.showinfo("Done", f"Applied {discount}{'%' if dtype == 'percent' else '$'} discount to {count} products ({category})")
     
     def remove_all_sales(self):
         if not messagebox.askyesno("Confirm", "Remove all sales?"): return
@@ -1207,7 +1335,10 @@ class ProductAdminApp:
                 disc = round((1 - sale/orig) * 100, 1) if orig > 0 else 0
                 item_id = p.get('itemId', '-')
                 self.sales_tree.insert('', tk.END, iid=p['id'], values=(item_id, p['name'], f"${orig}", f"${sale}", f"{disc}% off"))
-        self.sale_cat_combo['values'] = ["All Products"] + self.data['groups']
+        current = self.sale_cat_var.get()
+        self.sale_cat_combo['values'] = self.sale_target_values()
+        if current not in self.sale_cat_combo['values']:
+            self.sale_cat_combo.current(0)
 
     # ==================== GROUPS TAB ====================
     def create_groups_tab(self):
@@ -1439,6 +1570,26 @@ class ProductAdminApp:
         ttk.Button(btn_frame, text="Save Settings", command=self.save_settings_tab).pack(side='left', padx=5)
         ttk.Button(btn_frame, text="Reset to Default", command=self.reset_std_text).pack(side='left', padx=5)
         
+        # Sale flag names
+        flag_frame = ttk.LabelFrame(main_frame, text="Sale Flag Names", padding=15)
+        flag_frame.pack(fill='x', pady=10)
+        ttk.Label(flag_frame, text="Rename the flags used to group products for sales. "
+                                   "Flags are never shown on the website.",
+                  foreground='gray', wraplength=560).pack(anchor='w', pady=(0, 8))
+
+        names = self.flag_names()
+        self.flag_name_entries = {}
+        for key in FLAG_KEYS:
+            row = ttk.Frame(flag_frame)
+            row.pack(fill='x', pady=3)
+            ttk.Label(row, text=f"{key}:", width=8, font=('Courier', 9)).pack(side='left')
+            entry = ttk.Entry(row, width=30)
+            entry.insert(0, names[key])
+            entry.pack(side='left', padx=5)
+            self.flag_name_entries[key] = entry
+
+        ttk.Button(flag_frame, text="Save Flag Names", command=self.save_flag_names).pack(anchor='w', pady=(10, 0))
+
         # Info
         info_frame = ttk.LabelFrame(main_frame, text="Info", padding=10)
         info_frame.pack(fill='x', pady=10)
@@ -1454,6 +1605,30 @@ class ProductAdminApp:
         self.update_std_preview()
         messagebox.showinfo("Done", "Settings saved!")
     
+    def save_flag_names(self):
+        new_names = {}
+        for key, entry in self.flag_name_entries.items():
+            value = entry.get().strip()
+            new_names[key] = value or DEFAULT_FLAG_NAMES[key]
+
+        # Names are used to identify the flag in the Sales dropdown, so they must differ.
+        if len(set(new_names.values())) != len(new_names):
+            return messagebox.showerror("Error", "Each flag needs a different name.")
+
+        self.settings['flagNames'] = new_names
+        self.save_settings()
+
+        # Refresh every label that shows a flag name.
+        for key in FLAG_KEYS:
+            label = self.flag_label(key)
+            self.add_flag_checks[key].config(text=label)
+            self.batch_flag_checks[key].config(text=label)
+            self.flag_name_entries[key].delete(0, tk.END)
+            self.flag_name_entries[key].insert(0, label)
+        self.refresh_product_list()
+        self.refresh_sales_list()
+        messagebox.showinfo("Done", "Flag names saved!")
+
     def reset_std_text(self):
         if messagebox.askyesno("Confirm", "Reset standard text to default?"):
             self.settings_std_text.delete("1.0", tk.END)
