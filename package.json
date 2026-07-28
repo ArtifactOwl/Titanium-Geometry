@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/generate-facebook-feed.js && next build",
+    "feed": "node scripts/generate-facebook-feed.js",
     "start": "next start"
   },
   "dependencies": {
