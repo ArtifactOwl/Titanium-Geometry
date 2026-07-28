@@ -4,6 +4,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import products from "../data/products.json";
 import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 export default function Shop() {
   const router = useRouter();
@@ -75,9 +76,7 @@ export default function Shop() {
         )}
       </main>
 
-      <footer style={footerStyle}>
-        <p>© {new Date().getFullYear()} Titanium Geometry | <a href="mailto:titaniumgeometry@gmail.com">titaniumgeometry@gmail.com</a></p>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -253,9 +252,3 @@ const emptyStyle = {
   padding: "3rem",
 };
 
-const footerStyle = {
-  borderTop: "1px solid #e5e7eb",
-  padding: "2rem",
-  textAlign: "center",
-  color: "#6b7280",
-};

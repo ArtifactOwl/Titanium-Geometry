@@ -6,6 +6,7 @@ import products from "../../data/products.json";
 import Header from "../../components/Header";
 import { useCart } from "../../lib/cart";
 import { COUNTRIES, PAYPAL_EMAIL, shippingFor } from "../../lib/pricing";
+import Footer from "../../components/Footer";
 
 export default function ProductPage() {
   const router = useRouter();
@@ -226,9 +227,7 @@ export default function ProductPage() {
         </div>
       </main>
 
-      <footer style={footerStyle}>
-        <p>© {new Date().getFullYear()} Titanium Geometry | <a href="mailto:titaniumgeometry@gmail.com">titaniumgeometry@gmail.com</a></p>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -660,9 +659,3 @@ const detailsListStyle = {
   color: "#4b5563",
 };
 
-const footerStyle = {
-  borderTop: "1px solid #e5e7eb",
-  padding: "2rem",
-  textAlign: "center",
-  color: "#6b7280",
-};

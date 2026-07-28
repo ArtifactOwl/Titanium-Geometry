@@ -3,6 +3,7 @@ import Link from "next/link";
 import Head from "next/head";
 import products from "../data/products.json";
 import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 export default function WhyTitanium() {
   const videos = products.youtubeVideos || [];
@@ -235,9 +236,7 @@ export default function WhyTitanium() {
         </section>
       </main>
 
-      <footer style={footerStyle}>
-        <p>© {new Date().getFullYear()} Titanium Geometry | <a href="mailto:titaniumgeometry@gmail.com">titaniumgeometry@gmail.com</a></p>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -479,9 +478,3 @@ const btnOutline = {
   border: "2px solid #111827",
 };
 
-const footerStyle = {
-  borderTop: "1px solid #e5e7eb",
-  padding: "2rem",
-  textAlign: "center",
-  color: "#6b7280",
-};

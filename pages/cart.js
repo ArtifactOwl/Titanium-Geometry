@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import productData from "../data/products.json";
 import Header from "../components/Header";
 import { useCart } from "../lib/cart";
+import Footer from "../components/Footer";
 import {
   COUNTRIES,
   PAYPAL_EMAIL,
@@ -215,6 +216,12 @@ export default function CartPage() {
               )}
               <p style={secureNoteStyle}>🔒 Secure checkout via PayPal.</p>
               <p style={secureNoteStyle}>
+                <Link href="/returns" style={{ color: "#2563eb" }}>
+                  30-day returns
+                </Link>{" "}
+                — return shipping $5 US / $20 international.
+              </p>
+              <p style={secureNoteStyle}>
                 Questions? <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: "#2563eb" }}>{CONTACT_EMAIL}</a>
               </p>
             </aside>
@@ -222,12 +229,7 @@ export default function CartPage() {
         )}
       </main>
 
-      <footer style={footerStyle}>
-        <p>
-          © {new Date().getFullYear()} Titanium Geometry |{" "}
-          <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
-        </p>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -386,10 +388,4 @@ const btnPrimaryStyle = {
   color: "#fff",
   textDecoration: "none",
   borderRadius: 6,
-};
-const footerStyle = {
-  borderTop: "1px solid #e5e7eb",
-  padding: "2rem",
-  textAlign: "center",
-  color: "#6b7280",
 };

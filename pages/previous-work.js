@@ -3,6 +3,7 @@ import Link from "next/link";
 import Head from "next/head";
 import products from "../data/products.json";
 import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 const CONTACT_EMAIL = "titaniumgeometry@gmail.com";
 
@@ -48,9 +49,7 @@ export default function PreviousWork() {
         </div>
       </main>
 
-      <footer style={footerStyle}>
-        <p>© {new Date().getFullYear()} Titanium Geometry | <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -333,9 +332,3 @@ const btnPrimaryStyle = {
   fontWeight: 600,
 };
 
-const footerStyle = {
-  borderTop: "1px solid #e5e7eb",
-  padding: "2rem",
-  textAlign: "center",
-  color: "#6b7280",
-};

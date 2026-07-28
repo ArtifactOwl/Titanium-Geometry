@@ -3,6 +3,7 @@ import Link from "next/link";
 import Head from "next/head";
 import products from "../data/products.json";
 import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 export default function Home() {
   const groups = products.groups;
@@ -96,15 +97,7 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer style={footerStyle}>
-        <p>© {new Date().getFullYear()} Titanium Geometry</p>
-        <p>
-          <a href="mailto:titaniumgeometry@gmail.com" style={footerLinkStyle}>
-            titaniumgeometry@gmail.com
-          </a>
-        </p>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -328,13 +321,4 @@ const inputStyle = {
   width: "250px",
 };
 
-const footerStyle = {
-  borderTop: "1px solid #e5e7eb",
-  padding: "2rem",
-  textAlign: "center",
-  color: "#6b7280",
-};
 
-const footerLinkStyle = {
-  color: "#6b7280",
-};

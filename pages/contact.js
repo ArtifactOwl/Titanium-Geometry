@@ -2,6 +2,7 @@ import React from "react";
 import Head from "next/head";
 import Link from "next/link";
 import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 const CONTACT_EMAIL = "titaniumgeometry@gmail.com";
 
@@ -47,9 +48,7 @@ export default function Contact() {
         </div>
       </main>
 
-      <footer style={footerStyle}>
-        <p>© {new Date().getFullYear()} Titanium Geometry | <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
-      </footer>
+      <Footer />
     </div>
   );
 }
@@ -108,9 +107,3 @@ const linkStyle = {
   color: "#2563eb",
 };
 
-const footerStyle = {
-  borderTop: "1px solid #e5e7eb",
-  padding: "2rem",
-  textAlign: "center",
-  color: "#6b7280",
-};
