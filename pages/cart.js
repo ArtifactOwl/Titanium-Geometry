@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import productData from "../data/products.json";
 import Header from "../components/Header";
 import { useCart } from "../lib/cart";
+import { parseCartQuery } from "../lib/cartLink";
 import Footer from "../components/Footer";
 import {
   COUNTRIES,
@@ -24,31 +25,28 @@ export default function CartPage() {
   const [codeInput, setCodeInput] = useState("");
   const [appliedCode, setAppliedCode] = useState("");
 
-  // Support shareable links: /cart?add=G0001,G0002&code=SAVE20
-  // (handy for quoting a custom order — see docs/cart-and-coupons.md)
+  // Fill the cart from the URL. Used both for our own quote links and as the
+  // Meta (Facebook/Instagram) checkout URL, so it accepts the shapes either can
+  // send — see docs/facebook-checkout-url.md.
+  //
+  //   /cart?add=G0001,G0002&code=SAVE20            (our quote links)
+  //   /cart?products=G0001:1,G0002:1&coupon=X      (Meta style, id:quantity)
+  //
+  // Quantity is parsed but ignored: every piece is one of a kind.
   useEffect(() => {
     if (!router.isReady || !loaded) return;
-    const { add: addParam, code } = router.query;
-    if (addParam) {
-      String(addParam)
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .forEach((token) => {
-          const match = productData.products.find(
-            (p) => p.id === token || (p.itemId || "").toUpperCase() === token.toUpperCase()
-          );
-          if (match) add(match.id);
-        });
-    }
+    const { ids, code, hadParams } = parseCartQuery(router.query, productData.products);
+    ids.forEach(add);
     if (code) {
-      setCodeInput(String(code).toUpperCase());
-      setAppliedCode(String(code).toUpperCase());
+      setCodeInput(code);
+      setAppliedCode(code);
     }
-    if (addParam || code) {
+    if (hadParams) {
       router.replace("/cart", undefined, { shallow: true });
     }
-  }, [router.isReady, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+    // asPath is in the deps so this also works when the URL changes without a
+    // full page load; once the params are stripped it becomes a no-op.
+  }, [router.isReady, loaded, router.asPath]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resolve ids to products, splitting out anything no longer purchasable.
   const { items, unavailable } = useMemo(() => {
