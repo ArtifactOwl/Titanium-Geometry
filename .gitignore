@@ -5,3 +5,5 @@ ai-descriptions-images/
 data/products.json.bak
 __pycache__/
 public/facebook-feed.csv
+descriptions.json
+AGENTS.md
