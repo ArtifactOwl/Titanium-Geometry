@@ -143,7 +143,10 @@
       "folder": "eye-of-illusion",
       "status": "available",
       "itemId": "G0011",
-      "created": "2026-07-07"
+      "created": "2026-07-07",
+      "flags": [
+        "sale2"
+      ]
     },
     {
       "id": "hypercube",
@@ -154,7 +157,10 @@
       "folder": "hypercube",
       "status": "available",
       "itemId": "G0012",
-      "created": "2026-07-07"
+      "created": "2026-07-07",
+      "flags": [
+        "sale2"
+      ]
     },
     {
       "id": "impossible-rectangle",
@@ -165,7 +171,10 @@
       "folder": "impossible-rectangle",
       "status": "available",
       "itemId": "G0013",
-      "created": "2026-07-07"
+      "created": "2026-07-07",
+      "flags": [
+        "sale2"
+      ]
     },
     {
       "id": "knotwerk",
@@ -176,7 +185,10 @@
       "folder": "knotwerk",
       "status": "available",
       "itemId": "G0014",
-      "created": "2026-07-07"
+      "created": "2026-07-07",
+      "flags": [
+        "sale2"
+      ]
     },
     {
       "id": "spiral-illusion",
@@ -187,7 +199,10 @@
       "folder": "spiral-illusion",
       "status": "available",
       "itemId": "G0015",
-      "created": "2026-07-07"
+      "created": "2026-07-07",
+      "flags": [
+        "sale2"
+      ]
     },
     {
       "id": "the-network",
@@ -198,7 +213,10 @@
       "folder": "the-network",
       "status": "available",
       "itemId": "G0016",
-      "created": "2026-07-07"
+      "created": "2026-07-07",
+      "flags": [
+        "sale2"
+      ]
     },
     {
       "id": "cyborg-being",
@@ -209,7 +227,10 @@
       "folder": "cyborg-being",
       "status": "available",
       "itemId": "O0001",
-      "created": "2026-07-07"
+      "created": "2026-07-07",
+      "flags": [
+        "sale2"
+      ]
     },
     {
       "id": "fractal-brain",
@@ -220,7 +241,10 @@
       "folder": "fractal-brain",
       "status": "available",
       "itemId": "O0002",
-      "created": "2026-07-07"
+      "created": "2026-07-07",
+      "flags": [
+        "sale2"
+      ]
     },
     {
       "id": "fractal-heart",
@@ -231,7 +255,10 @@
       "folder": "fractal-heart",
       "status": "available",
       "itemId": "O0003",
-      "created": "2026-07-07"
+      "created": "2026-07-07",
+      "flags": [
+        "sale2"
+      ]
     },
     {
       "id": "whistle",
@@ -242,7 +269,10 @@
       "folder": "whistle",
       "status": "available",
       "itemId": "O0004",
-      "created": "2026-07-07"
+      "created": "2026-07-07",
+      "flags": [
+        "sale2"
+      ]
     },
     {
       "id": "sacred-geometry-pocket-knife",
