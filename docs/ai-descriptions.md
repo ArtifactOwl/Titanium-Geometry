@@ -78,10 +78,23 @@ WRITING RULES (the unique intro)
   placeholder "[size]" so I can fill it in.
 - Do not repeat the Includes/Shipping/Care content in your intro.
 
+SEARCH KEYWORDS
+Also give each product 3-6 short keywords for the shop's search box. These are
+never shown to customers — they only make the piece findable. Rules:
+- lower case, single words or very short phrases
+- describe the SUBJECT and STYLE, plus the main colours
+- REUSE these standard words wherever they apply, rather than inventing synonyms:
+    geometry, mandala, sacred geometry, fractal, molecule, animals, nature,
+    knotwork, optical illusion, biomechanical, judaic, abstract, floral, space
+- add the obvious colours you see (blue, gold, purple, rainbow, silver...)
+- no punctuation, no duplicates, nothing about titanium/pendant/necklace
+  (every piece is those, so they're useless for narrowing a search)
+
 OUTPUT FORMAT
 Return ONLY a JSON array, nothing else. Each element:
   { "id": "<the product's id from the JSON I pasted>",
-    "description": "<your intro>\n\n<STANDARD BLOCK verbatim>" }
+    "description": "<your intro>\n\n<STANDARD BLOCK verbatim>",
+    "keywords": ["mandala", "geometry", "blue"] }
 Use the product's "id" (not the folder or name) as the id. Put your intro, then a
 blank line, then the standard block, all inside the single "description" string.
 

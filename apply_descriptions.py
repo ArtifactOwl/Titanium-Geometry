@@ -44,6 +44,7 @@ def main():
     by_id = {p["id"]: p for p in data.get("products", [])}
 
     updated, unknown, empty = [], [], []
+    keyworded = 0
     for item in updates:
         pid = (item or {}).get("id")
         desc = (item or {}).get("description")
@@ -54,6 +55,21 @@ def main():
             unknown.append(pid)
             continue
         by_id[pid]["description"] = desc.strip()
+
+        # Optional search keywords (see docs/ai-descriptions.md)
+        kws = (item or {}).get("keywords")
+        if isinstance(kws, str):
+            kws = kws.split(",")
+        if isinstance(kws, list):
+            clean = []
+            for raw in kws:
+                word = str(raw).strip().lower()
+                if word and word not in clean:
+                    clean.append(word)
+            if clean:
+                by_id[pid]["keywords"] = clean
+                keyworded += 1
+
         updated.append(pid)
 
     if not updated:
@@ -68,6 +84,8 @@ def main():
         json.dump(data, f, indent=2)  # matches product_admin.py's save format
 
     print(f"Updated {len(updated)} description(s): {', '.join(updated)}")
+    if keyworded:
+        print(f"Set search keywords on {keyworded} product(s)")
     print(f"Backup saved to: {os.path.basename(DATA_FILE)}.bak")
     if unknown:
         print(f"\nSkipped {len(unknown)} unknown id(s): {', '.join(unknown)}")

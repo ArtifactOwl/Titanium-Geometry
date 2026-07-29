@@ -741,7 +741,7 @@ class ProductAdminApp:
         for row, btns in enumerate([
             [("Mark Sold", self.mark_sold), ("Mark Pending", self.mark_pending), ("Mark Available", self.mark_available), ("Delete", self.delete_product)],
             [("Edit Price", self.edit_price), ("Edit Description", self.edit_description), ("Change Group", self.change_group), ("Open Images Folder", self.open_product_folder)],
-            [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous), ("Edit Flags", self.edit_flags)]
+            [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous), ("Edit Flags", self.edit_flags), ("Edit Keywords", self.edit_keywords)]
         ]):
             btn_frame = ttk.Frame(main_frame)
             btn_frame.pack(fill='x', pady=3)
@@ -1029,6 +1029,51 @@ class ProductAdminApp:
         self.save_data(); self.refresh_product_list()
         messagebox.showinfo("Done", "Product deleted")
     
+    def edit_keywords(self):
+        """Search keywords for the shop's search box (e.g. animals, mandala,
+        geometry). Not shown to customers — they only make the piece findable."""
+        pid = self.get_selected_product()
+        if not pid: return
+        product = next((p for p in self.data['products'] if p['id'] == pid), None)
+        if not product: return
+
+        current = product.get('keywords') or []
+        if isinstance(current, str):
+            current = [k.strip() for k in current.split(',') if k.strip()]
+
+        # Offer what's already in use elsewhere, so wording stays consistent.
+        in_use = {}
+        for p in self.data['products']:
+            for k in (p.get('keywords') or []):
+                if isinstance(k, str) and k.strip():
+                    key = k.strip().lower()
+                    in_use[key] = in_use.get(key, 0) + 1
+        suggestions = ", ".join(k for k, _ in sorted(in_use.items(), key=lambda x: -x[1])[:20])
+
+        answer = simpledialog.askstring(
+            "Edit Keywords",
+            f"{product['name']}\n\n"
+            "Comma-separated words customers might search for\n"
+            "(e.g. animals, mandala, geometry, blue):\n\n"
+            + (f"Already used: {suggestions}\n" if suggestions else ""),
+            initialvalue=", ".join(current))
+        if answer is None:
+            return
+
+        keywords = []
+        for raw in answer.split(','):
+            word = raw.strip().lower()
+            if word and word not in keywords:
+                keywords.append(word)
+        if keywords:
+            product['keywords'] = keywords
+        else:
+            product.pop('keywords', None)
+        self.save_data()
+        self.refresh_product_list()
+        messagebox.showinfo("Done", f"Keywords for {product['name']}:\n\n"
+                                    + (", ".join(keywords) if keywords else "(none)"))
+
     def edit_flags(self):
         pid = self.get_selected_product()
         if not pid: return
