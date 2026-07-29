@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import Head from "next/head";
 import products from "../data/products.json";
@@ -11,8 +11,14 @@ export default function Home() {
   const categoryImages = products.categoryImages || {};
   const availableProducts = products.products.filter(p => !p.sold);
   // All featured pieces; the rail scrolls horizontally through them.
-  const featured = products.products.filter(
-    (p) => p.featured && (p.status === "available" || !p.status)
+  // Memoised so its identity is stable — the rail re-runs its ordering
+  // whenever this prop changes.
+  const featured = useMemo(
+    () =>
+      products.products.filter(
+        (p) => p.featured && (p.status === "available" || !p.status)
+      ),
+    []
   );
   
   return (

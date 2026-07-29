@@ -11,7 +11,43 @@ import ProductCard from "./ProductCard";
 // click — without this, a small wobble while clicking would swallow the link.
 const DRAG_THRESHOLD = 6;
 
-export default function FeaturedRail({ products }) {
+const OFFSET_KEY = "tg_featured_offset";
+
+export default function FeaturedRail({ products, rotate = true }) {
+  // Which piece leads the rail changes from visit to visit, so landing on the
+  // homepage doesn't always show the same two. The order is rotated (not
+  // shuffled) so the sequence stays coherent and every piece gets a turn.
+  //
+  // It happens after mount, never during render: the server has no idea which
+  // visit this is, and varying the markup would break hydration.
+  const [ordered, setOrdered] = useState(products);
+  const rotated = useRef(false);
+
+  useEffect(() => {
+    setOrdered(products);
+    rotated.current = false;
+  }, [products]);
+
+  useEffect(() => {
+    if (!rotate || rotated.current) return;
+    if (!products || products.length < 2) return;
+    rotated.current = true;
+
+    let offset;
+    try {
+      const saved = window.localStorage.getItem(OFFSET_KEY);
+      offset = saved == null ? Math.floor(Math.random() * products.length) : parseInt(saved, 10);
+      if (!Number.isFinite(offset)) offset = 0;
+      window.localStorage.setItem(OFFSET_KEY, String((offset + 1) % products.length));
+    } catch {
+      // Private browsing or blocked storage — still vary it, just don't persist.
+      offset = Math.floor(Math.random() * products.length);
+    }
+
+    const i = ((offset % products.length) + products.length) % products.length;
+    if (i !== 0) setOrdered([...products.slice(i), ...products.slice(0, i)]);
+  }, [products, rotate]);
+
   const railRef = useRef(null);
   const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: 0 });
   const [dragging, setDragging] = useState(false);
@@ -30,7 +66,7 @@ export default function FeaturedRail({ products }) {
     updateArrows();
     window.addEventListener("resize", updateArrows);
     return () => window.removeEventListener("resize", updateArrows);
-  }, [updateArrows, products]);
+  }, [updateArrows, ordered]);
 
   const onPointerDown = (e) => {
     // Let the browser handle touch scrolling; only take over for mouse drags.
@@ -116,7 +152,7 @@ export default function FeaturedRail({ products }) {
         // its own image/link drag and the rail never moves.
         onDragStart={(e) => e.preventDefault()}
       >
-        {products.map((product) => (
+        {ordered.map((product) => (
           <div key={product.id} data-rail-item>
             <ProductCard product={product} />
           </div>
