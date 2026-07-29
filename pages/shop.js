@@ -179,6 +179,9 @@ function ProductCard({ product, sold }) {
       <div style={{...cardStyle, opacity: (isSold || isPending) ? 0.6 : 1}}>
         {isSold && <div style={soldBadgeStyle}>SOLD</div>}
         {isPending && <div style={pendingBadgeStyle}>PENDING</div>}
+        {product.featured && !isSold && !isPending && (
+          <div style={featuredBadgeStyle}>★ Featured</div>
+        )}
         <div style={imageContainerStyle}>
           {!imageError ? (
             <img 
@@ -359,6 +362,19 @@ const pendingBadgeStyle = {
   top: "10px",
   right: "10px",
   background: "#f59e0b",
+  color: "white",
+  padding: "0.25rem 0.5rem",
+  borderRadius: "4px",
+  fontSize: "0.75rem",
+  fontWeight: "bold",
+  zIndex: 1,
+};
+
+const featuredBadgeStyle = {
+  position: "absolute",
+  top: "10px",
+  left: "10px",
+  background: "#111827",
   color: "white",
   padding: "0.25rem 0.5rem",
   borderRadius: "4px",

@@ -712,7 +712,7 @@ class ProductAdminApp:
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
-        columns = ('itemId', 'name', 'group', 'price', 'status', 'video') + tuple(FLAG_KEYS)
+        columns = ('itemId', 'name', 'group', 'price', 'status', 'video') + tuple(FLAG_KEYS) + ('featured',)
         self.product_tree = ttk.Treeview(list_frame, columns=columns, show='headings',
                                          height=10, selectmode='extended')
         for col, w in [('itemId', 70), ('name', 170), ('group', 105), ('price', 85), ('status', 65), ('video', 45)]:
@@ -722,6 +722,8 @@ class ProductAdminApp:
         for key in FLAG_KEYS:
             self.product_tree.heading(key, text=self.flag_label(key))
             self.product_tree.column(key, width=80, anchor='center', stretch=False)
+        self.product_tree.heading('featured', text='Featured')
+        self.product_tree.column('featured', width=70, anchor='center', stretch=False)
         self.product_tree.bind('<Button-1>', self.on_product_tree_click)
         
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.product_tree.yview)
@@ -765,7 +767,7 @@ class ProductAdminApp:
         if not (0 <= col_index < len(columns)):
             return
         flag_key = columns[col_index]
-        if flag_key not in FLAG_KEYS:
+        if flag_key not in FLAG_KEYS and flag_key != 'featured':
             return  # not a checkbox column — let the normal click through
 
         row = self.product_tree.identify_row(event.y)
@@ -774,8 +776,46 @@ class ProductAdminApp:
 
         selection = self.product_tree.selection()
         targets = selection if (row in selection and len(selection) > 1) else (row,)
-        self.toggle_flag_for(targets, flag_key, row)
+        if flag_key == 'featured':
+            self.toggle_featured_for(targets, row)
+        else:
+            self.toggle_flag_for(targets, flag_key, row)
         return 'break'  # keep the current selection instead of resetting it
+
+    def toggle_featured_for(self, product_ids, anchor_id):
+        """Featured pieces are pinned to the top of the shop's default
+        ("Featured") sort and get a badge on their card."""
+        by_id = {p['id']: p for p in self.data['products']}
+        anchor = by_id.get(anchor_id)
+        if not anchor:
+            return
+        turn_on = not anchor.get('featured')
+
+        changed = 0
+        for pid in product_ids:
+            product = by_id.get(pid)
+            if not product:
+                continue
+            if bool(product.get('featured')) == turn_on:
+                continue
+            if turn_on:
+                product['featured'] = True
+            else:
+                product.pop('featured', None)   # keep products.json tidy
+            changed += 1
+
+        if not changed:
+            return
+        keep = list(product_ids)
+        self.save_data()
+        self.refresh_product_list()
+        still_there = [pid for pid in keep if self.product_tree.exists(pid)]
+        if still_there:
+            self.product_tree.selection_set(still_there)
+        total = sum(1 for p in self.data['products'] if p.get('featured'))
+        self.manage_status_var.set(
+            f"{'Featured' if turn_on else 'Unfeatured'} {changed} product"
+            f"{'s' if changed != 1 else ''} ({total} featured in total)")
 
     def toggle_flag_for(self, product_ids, flag_key, anchor_id):
         """Flip the flag on the clicked row, then apply that same state to every
@@ -983,6 +1023,7 @@ class ProductAdminApp:
                 price_display = f"${product['price']}"
             flags = self.product_flags(product)
             flag_cells = tuple(CHECK_ON if k in flags else CHECK_OFF for k in FLAG_KEYS)
+            flag_cells += (CHECK_ON if product.get('featured') else CHECK_OFF,)
             self.product_tree.insert('', tk.END, iid=product['id'],
                                      values=(item_id, product['name'], product['group'],
                                              price_display, status, has_video) + flag_cells)
