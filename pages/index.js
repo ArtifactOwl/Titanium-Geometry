@@ -3,17 +3,17 @@ import Link from "next/link";
 import Head from "next/head";
 import products from "../data/products.json";
 import Header from "../components/Header";
-import ProductCard from "../components/ProductCard";
+import FeaturedRail from "../components/FeaturedRail";
 import Footer from "../components/Footer";
 
 export default function Home() {
   const groups = products.groups;
   const categoryImages = products.categoryImages || {};
   const availableProducts = products.products.filter(p => !p.sold);
-  // Up to 5; CSS hides the extras on narrower screens so the row stays full.
-  const featured = products.products
-    .filter((p) => p.featured && (p.status === "available" || !p.status))
-    .slice(0, 5);
+  // All featured pieces; the rail scrolls horizontally through them.
+  const featured = products.products.filter(
+    (p) => p.featured && (p.status === "available" || !p.status)
+  );
   
   return (
     <div style={pageStyle}>
@@ -36,11 +36,10 @@ export default function Home() {
         {featured.length > 0 && (
           <section style={sectionStyle}>
             <h2 style={h2Style}>Featured Pieces</h2>
-            <div className="featured-grid">
-              {featured.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            {featured.length > 2 && (
+              <p style={railHintStyle}>Swipe or drag to see more →</p>
+            )}
+            <FeaturedRail products={featured} />
             <Link href="/shop" style={{ ...btnOutlineStyle, marginTop: "1.5rem", display: "inline-block" }}>
               See Everything
             </Link>
@@ -220,6 +219,12 @@ const subtitleStyle = {
   color: "#6b7280",
   maxWidth: "600px",
   margin: "0 auto 2rem",
+};
+
+const railHintStyle = {
+  color: "#6b7280",
+  fontSize: "0.85rem",
+  margin: "-0.5rem 0 1rem",
 };
 
 const sectionStyle = {

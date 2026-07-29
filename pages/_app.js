@@ -25,25 +25,45 @@ const globalStyles = `
     max-width: 100%;
   }
   
-  /* Featured row on the homepage: up to 5 across, fewer as the screen
-     narrows. Extras are hidden rather than wrapping, so it stays one
-     tidy row at every width. */
-  .featured-grid {
-    display: grid;
+  /* Featured row on the homepage: a horizontal rail you can swipe or drag.
+     How many cards fit is set here; the rest scroll into view. */
+  .featured-rail {
+    display: flex;
     gap: 1.5rem;
-    grid-template-columns: repeat(5, 1fr);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.75rem;
+    cursor: grab;
+    scrollbar-width: thin;
   }
+  .featured-rail.dragging {
+    cursor: grabbing;
+    scroll-behavior: auto;   /* follow the pointer exactly while dragging */
+    scroll-snap-type: none;
+  }
+  .featured-rail > * {
+    flex: 0 0 calc((100% - 4 * 1.5rem) / 5);
+    scroll-snap-align: start;
+  }
+  .featured-rail::-webkit-scrollbar { height: 8px; }
+  .featured-rail::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 999px;
+  }
+  /* Dragging shouldn't select the text inside the cards. */
+  .featured-rail.dragging * { user-select: none; }
+
   @media (max-width: 1150px) {
-    .featured-grid { grid-template-columns: repeat(4, 1fr); }
-    .featured-grid > *:nth-child(n + 5) { display: none; }
+    .featured-rail > * { flex-basis: calc((100% - 3 * 1.5rem) / 4); }
   }
   @media (max-width: 900px) {
-    .featured-grid { grid-template-columns: repeat(3, 1fr); }
-    .featured-grid > *:nth-child(n + 4) { display: none; }
+    .featured-rail > * { flex-basis: calc((100% - 2 * 1.5rem) / 3); }
   }
   @media (max-width: 650px) {
-    .featured-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
-    .featured-grid > *:nth-child(n + 3) { display: none; }
+    .featured-rail { gap: 1rem; }
+    .featured-rail > * { flex-basis: calc((100% - 1rem) / 2); }
   }
 
   /* Responsive adjustments */
