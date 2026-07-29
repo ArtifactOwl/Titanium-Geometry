@@ -6,6 +6,7 @@ import productData from "../data/products.json";
 import Header from "../components/Header";
 import { useCart } from "../lib/cart";
 import { parseCartQuery } from "../lib/cartLink";
+import { trackInitiateCheckout } from "../lib/fbpixel";
 import Footer from "../components/Footer";
 import {
   COUNTRIES,
@@ -249,7 +250,12 @@ export default function CartPage() {
  */
 function PayPalCartForm({ items, totals, coupon }) {
   return (
-    <form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
+    <form
+      action="https://www.paypal.com/cgi-bin/webscr"
+      method="post"
+      target="_top"
+      onSubmit={() => trackInitiateCheckout(items, totals.total)}
+    >
       <input type="hidden" name="cmd" value="_cart" />
       <input type="hidden" name="upload" value="1" />
       <input type="hidden" name="business" value={PAYPAL_EMAIL} />

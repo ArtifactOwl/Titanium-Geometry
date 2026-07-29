@@ -7,3 +7,4 @@ __pycache__/
 public/facebook-feed.csv
 descriptions.json
 AGENTS.md
+.env*.local

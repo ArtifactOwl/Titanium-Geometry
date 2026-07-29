@@ -1,5 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
+import Script from "next/script";
+import { useRouter } from "next/router";
 import { CartProvider } from "../lib/cart";
+import { pixelEnabled, pixelInitScript, trackPageView } from "../lib/fbpixel";
 
 // Global styles
 const globalStyles = `
@@ -35,9 +38,24 @@ const globalStyles = `
 `;
 
 export default function App({ Component, pageProps }) {
+  const router = useRouter();
+
+  // Count the first view and every client-side navigation after it.
+  useEffect(() => {
+    if (!pixelEnabled) return;
+    trackPageView();
+    router.events.on("routeChangeComplete", trackPageView);
+    return () => router.events.off("routeChangeComplete", trackPageView);
+  }, [router.events]);
+
   return (
     <CartProvider>
       <style jsx global>{globalStyles}</style>
+      {pixelEnabled && (
+        <Script id="fb-pixel" strategy="afterInteractive">
+          {pixelInitScript}
+        </Script>
+      )}
       <Component {...pageProps} />
     </CartProvider>
   );

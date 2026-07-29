@@ -6,6 +6,7 @@ import products from "../../data/products.json";
 import Header from "../../components/Header";
 import { useCart } from "../../lib/cart";
 import { COUNTRIES, PAYPAL_EMAIL, priceInfo, round2, shippingFor } from "../../lib/pricing";
+import { trackAddToCart, trackViewContent } from "../../lib/fbpixel";
 import Footer from "../../components/Footer";
 
 export default function ProductPage() {
@@ -42,6 +43,11 @@ export default function ProductPage() {
       }
     }
   }, [id]);
+
+  // Tell the pixel which piece is being viewed, so it can be retargeted later.
+  useEffect(() => {
+    if (product) trackViewContent(product, priceInfo(product).final);
+  }, [product]);
 
   if (!product) {
     return <div style={pageStyle}><p>Loading...</p></div>;
@@ -251,7 +257,13 @@ function AddToCartButton({ product }) {
           ✓ In your cart — view cart
         </Link>
       ) : (
-        <button style={addToCartStyle} onClick={() => add(product.id)}>
+        <button
+          style={addToCartStyle}
+          onClick={() => {
+            add(product.id);
+            trackAddToCart(product, priceInfo(product).final);
+          }}
+        >
           Add to Cart
         </button>
       )}
