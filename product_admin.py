@@ -12,6 +12,9 @@ import json
 import os
 import re
 import shutil
+import queue
+import subprocess
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -55,6 +58,19 @@ FLAG_TARGET_PREFIX = "Flag: "
 # Size is a short free-text note ("1.2 inch / 3cm"), shown as the first
 # bullet under Details on the product page. Kept short so it stays a size.
 SIZE_MAX_LENGTH = 64
+
+# Only these paths get published — everything the admin tool actually edits.
+# Deliberately narrow so a stray file in the project can never be swept into a
+# commit by accident.
+PUBLISH_PATHS = [
+    "data/products.json",
+    "data/coupons.json",
+    "data/flag-sales.json",
+    "data/admin_settings.json",
+    "public/pendants",
+    "public/previous-work",
+    "public/categories",
+]
 CHECK_ON = "☑"
 CHECK_OFF = "☐"
 
@@ -82,6 +98,7 @@ class ProductAdminApp:
         self.coupons_tab = ttk.Frame(self.notebook)
         self.groups_tab = ttk.Frame(self.notebook)
         self.videos_tab = ttk.Frame(self.notebook)
+        self.publish_tab = ttk.Frame(self.notebook)
         self.settings_tab = ttk.Frame(self.notebook)
         
         self.notebook.add(self.add_tab, text="  Add Product  ")
@@ -92,6 +109,7 @@ class ProductAdminApp:
         self.notebook.add(self.coupons_tab, text="  Coupons  ")
         self.notebook.add(self.groups_tab, text="  Groups  ")
         self.notebook.add(self.videos_tab, text="  Videos  ")
+        self.notebook.add(self.publish_tab, text="  Publish  ")
         self.notebook.add(self.settings_tab, text="  Settings  ")
         
         self.create_add_tab()
@@ -102,6 +120,7 @@ class ProductAdminApp:
         self.create_coupons_tab()
         self.create_groups_tab()
         self.create_videos_tab()
+        self.create_publish_tab()
         self.create_settings_tab()
         
     def load_data(self):
@@ -2123,6 +2142,296 @@ class ProductAdminApp:
         self.coupons.remove(c)
         self.save_coupons()
         self.refresh_coupon_list()
+
+    # ==================== PUBLISH TAB ====================
+    def run_git(self, args, timeout=120):
+        """Run a git command in the project folder. Returns (ok, output)."""
+        kwargs = {}
+        if os.name == "nt":
+            # Stops a console window flashing up on Windows.
+            kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        try:
+            result = subprocess.run(
+                ["git"] + args,
+                cwd=PROJECT_PATH,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                **kwargs,
+            )
+        except FileNotFoundError:
+            return False, ("Git isn't installed, or isn't on your PATH.\n"
+                           "Install Git for Windows, then reopen this tool.")
+        except subprocess.TimeoutExpired:
+            return False, f"git {' '.join(args)} took too long and was stopped."
+        output = (result.stdout or "") + (result.stderr or "")
+        # rstrip only: `git status --porcelain` encodes the state in the first two
+        # columns, so an unstaged change begins with a space that must survive.
+        return result.returncode == 0, output.rstrip()
+
+    def create_publish_tab(self):
+        main_frame = ttk.Frame(self.publish_tab, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(main_frame, text="Publish to the Website",
+                  font=('Helvetica', 16, 'bold')).pack(pady=(0, 5))
+        ttk.Label(main_frame,
+                  text="Sends your changes to GitHub, which makes Vercel rebuild the live site.\n"
+                       "Only the files this tool edits are published — products, images and settings.",
+                  foreground='gray', justify='center').pack(pady=(0, 10))
+
+        top = ttk.Frame(main_frame)
+        top.pack(fill='x')
+        ttk.Button(top, text="Check for Changes", command=self.refresh_publish_status).pack(side='left')
+        self.publish_summary_var = tk.StringVar(value="")
+        ttk.Label(top, textvariable=self.publish_summary_var, foreground='#0a7').pack(side='left', padx=12)
+
+        changes_frame = ttk.LabelFrame(main_frame, text="Waiting to be published", padding=10)
+        changes_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+        self.publish_changes = scrolledtext.ScrolledText(changes_frame, height=8, state='disabled',
+                                                         font=('Courier', 9))
+        self.publish_changes.pack(fill=tk.BOTH, expand=True)
+
+        msg_frame = ttk.Frame(main_frame)
+        msg_frame.pack(fill='x', pady=(0, 8))
+        ttk.Label(msg_frame, text="Note (optional):").pack(side='left')
+        self.publish_message = ttk.Entry(msg_frame, width=52)
+        self.publish_message.pack(side='left', padx=8)
+
+        btn_row = ttk.Frame(main_frame)
+        btn_row.pack(fill='x')
+        self.publish_button = ttk.Button(btn_row, text="Publish Now", command=self.publish_changes_clicked)
+        self.publish_button.pack(side='left')
+        self.pull_button = ttk.Button(btn_row, text="Get Latest First", command=self.pull_latest_clicked)
+        self.pull_button.pack(side='left', padx=8)
+        self.publish_status_var = tk.StringVar(value="")
+        ttk.Label(btn_row, textvariable=self.publish_status_var, foreground='gray').pack(side='left', padx=10)
+
+        log_frame = ttk.LabelFrame(main_frame, text="Result", padding=10)
+        log_frame.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
+        self.publish_log = scrolledtext.ScrolledText(log_frame, height=7, state='disabled',
+                                                     font=('Courier', 9))
+        self.publish_log.pack(fill=tk.BOTH, expand=True)
+
+        self.refresh_publish_status()
+
+    def _set_text(self, widget, content):
+        widget.config(state='normal')
+        widget.delete("1.0", tk.END)
+        widget.insert("1.0", content)
+        widget.config(state='disabled')
+
+    def _log(self, content):
+        self._set_text(self.publish_log, content)
+
+    def pending_publish_changes(self):
+        """Changed files under PUBLISH_PATHS, as (status, path) pairs."""
+        ok, out = self.run_git(["status", "--porcelain", "--untracked-files=all", "--"] + PUBLISH_PATHS)
+        if not ok:
+            return None, out
+        changes = []
+        for line in out.splitlines():
+            if len(line) < 4:
+                continue
+            code, path = line[:2].strip(), line[3:].strip().strip('"')
+            changes.append((code or "?", path))
+        return changes, ""
+
+    def unpushed_commits(self):
+        """Commits saved on this computer but not yet sent to GitHub. A push that
+        failed (say the site had newer changes) leaves work stranded here, so the
+        Publish tab has to count it as still-to-publish."""
+        ok, out = self.run_git(["rev-list", "--count", "@{u}..HEAD"])
+        if not ok:
+            return 0
+        try:
+            return int(out.strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            return 0
+
+    def refresh_publish_status(self):
+        changes, error = self.pending_publish_changes()
+        if changes is None:
+            self.publish_summary_var.set("")
+            self._set_text(self.publish_changes, "")
+            self._log("Couldn't read the project's status:\n\n" + error)
+            return
+
+        pending_commits = self.unpushed_commits()
+        if not changes:
+            if pending_commits:
+                self.publish_summary_var.set(
+                    f"{pending_commits} saved change(s) still to send")
+                self._set_text(
+                    self.publish_changes,
+                    f"{pending_commits} change(s) are saved on this computer but "
+                    "haven't reached the website yet — click Publish Now to send them.")
+            else:
+                self.publish_summary_var.set("Everything is already published")
+                self._set_text(self.publish_changes, "No changes waiting.")
+                self.publish_message.delete(0, tk.END)
+            return
+
+        products = sum(1 for _, p in changes if p.endswith("products.json"))
+        images = sum(1 for _, p in changes if p.lower().endswith((".jpg", ".jpeg", ".png", ".webp")))
+        settings = sum(1 for _, p in changes
+                       if p.endswith(("coupons.json", "flag-sales.json", "admin_settings.json")))
+        bits = []
+        if products: bits.append("product changes")
+        if images: bits.append(f"{images} image{'s' if images != 1 else ''}")
+        if settings: bits.append("settings")
+        self.publish_summary_var.set(f"{len(changes)} file(s) to publish — " + ", ".join(bits))
+
+        label = {"M": "changed", "A": "added", "??": "new", "D": "removed", "R": "renamed"}
+        listing = "\n".join(f"  {label.get(code, code):9} {path}" for code, path in changes)
+        self._set_text(self.publish_changes, listing)
+
+        if not self.publish_message.get().strip():
+            self.publish_message.insert(0, "Update products from admin tool")
+
+    def _set_publish_busy(self, busy, status=""):
+        state = 'disabled' if busy else 'normal'
+        self.publish_button.config(state=state)
+        self.pull_button.config(state=state)
+        self.publish_status_var.set(status)
+
+    def publish_changes_clicked(self):
+        changes, error = self.pending_publish_changes()
+        if changes is None:
+            return messagebox.showerror("Error", error)
+        if not changes:
+            pending_commits = self.unpushed_commits()
+            if not pending_commits:
+                return messagebox.showinfo("Nothing to publish",
+                                           "There are no changes waiting to go to the website.")
+            if not messagebox.askyesno(
+                    "Send saved changes?",
+                    f"{pending_commits} change(s) are saved here but haven't reached the "
+                    "website yet.\n\nSend them now?"):
+                return
+            self._set_publish_busy(True, "Publishing…")
+            self._log("Sending saved changes…\n")
+            self._git_queue = queue.Queue()
+            threading.Thread(target=self._publish_worker, args=(None, []), daemon=True).start()
+            self.root.after(150, lambda: self._poll_git(self._publish_finished))
+            return
+
+        preview = "\n".join(f"  {path}" for _, path in changes[:12])
+        if len(changes) > 12:
+            preview += f"\n  ...and {len(changes) - 12} more"
+        if not messagebox.askyesno(
+                "Publish to the website?",
+                f"{len(changes)} file(s) will be sent to GitHub and the live site "
+                f"will rebuild:\n\n{preview}\n\nThis updates the public website. Continue?"):
+            return
+
+        note = self.publish_message.get().strip() or "Update products from admin tool"
+        self._set_publish_busy(True, "Publishing…")
+        self._log("Publishing…\n")
+        # The git work runs off the UI thread and posts its result to a queue that
+        # the main thread polls — tkinter must only ever be touched from here.
+        self._git_queue = queue.Queue()
+        paths = [path for _, path in changes]
+        threading.Thread(target=self._publish_worker, args=(note, paths), daemon=True).start()
+        self.root.after(150, lambda: self._poll_git(self._publish_finished))
+
+    def _poll_git(self, on_done):
+        """Check whether the background git command has finished yet."""
+        try:
+            result = self._git_queue.get_nowait()
+        except queue.Empty:
+            self.root.after(150, lambda: self._poll_git(on_done))
+            return
+        on_done(result)
+
+    def _publish_worker(self, note, paths):
+        """Runs off the UI thread; the result is posted to self._git_queue.
+
+        Stages exactly the files listed in the preview. Naming them individually
+        (rather than the whole PUBLISH_PATHS list) means what gets committed is
+        exactly what was shown, and a folder that doesn't exist yet can't make
+        `git add` fail on an unmatched pathspec."""
+        steps = []
+        ok = True
+        if paths:
+            ok, out = self.run_git(["add", "--"] + paths)
+            steps.append(("Staging files", ok, out))
+        if ok and paths:
+            ok, out = self.run_git(["commit", "-m", note])
+            # "nothing to commit" isn't a real failure worth alarming about
+            if not ok and "nothing to commit" in out.lower():
+                ok, out = True, "Nothing new to commit."
+            steps.append(("Saving a version", ok, out))
+        if ok:
+            ok, out = self.run_git(["push"], timeout=180)
+            steps.append(("Sending to GitHub", ok, out))
+
+        self._git_queue.put(steps)
+
+    def _publish_finished(self, steps):
+        lines = []
+        failed = None
+        for name, ok, out in steps:
+            lines.append(f"{'OK  ' if ok else 'FAIL'}  {name}")
+            if out:
+                lines += ["      " + l for l in out.splitlines()]
+            if not ok and failed is None:
+                failed = (name, out)
+
+        if failed is None:
+            lines.append("")
+            lines.append("Done. Vercel is rebuilding — the site usually updates within a minute or two.")
+        self._log("\n".join(lines))
+        self._set_publish_busy(False, "")
+        self.refresh_publish_status()
+
+        if failed is None:
+            self.publish_message.delete(0, tk.END)
+            messagebox.showinfo("Published",
+                                "Your changes are on their way.\n\n"
+                                "Vercel rebuilds the site automatically — usually a minute or two.")
+        else:
+            name, out = failed
+            hint = ""
+            low = (out or "").lower()
+            if "rejected" in low or "non-fast-forward" in low or "behind" in low:
+                hint = ("\n\nThe website has newer changes than this computer. "
+                        "Click \"Get Latest First\", then publish again.")
+            elif "could not read username" in low or "authentication" in low or "permission" in low:
+                hint = ("\n\nGitHub wouldn't accept the login. Signing in once from a terminal "
+                        "with 'git push' usually fixes it for good.")
+            elif "not a git repository" in low:
+                hint = "\n\nThis folder isn't connected to GitHub."
+            messagebox.showerror("Couldn't publish", f"{name} failed.\n\n{out}{hint}")
+
+    def pull_latest_clicked(self):
+        if not messagebox.askyesno(
+                "Get the latest first?",
+                "This pulls any newer changes from GitHub into this computer before you publish.\n\n"
+                "Continue?"):
+            return
+        self._set_publish_busy(True, "Fetching…")
+        self._log("Getting the latest from GitHub…\n")
+
+        self._git_queue = queue.Queue()
+
+        def worker():
+            self._git_queue.put(self.run_git(["pull", "--rebase"], timeout=180))
+
+        threading.Thread(target=worker, daemon=True).start()
+        self.root.after(150, lambda: self._poll_git(lambda r: self._pull_finished(*r)))
+
+    def _pull_finished(self, ok, out):
+        self._log(("OK  " if ok else "FAIL  ") + "Getting the latest\n" +
+                  "\n".join("      " + l for l in (out or "").splitlines()))
+        self._set_publish_busy(False, "")
+        self.data = self.load_data()
+        self.refresh_product_list()
+        self.refresh_publish_status()
+        if ok:
+            messagebox.showinfo("Up to date", "This computer now has the latest changes.")
+        else:
+            messagebox.showerror("Couldn't fetch", out or "Unknown error")
 
     def create_settings_tab(self):
         main_frame = ttk.Frame(self.settings_tab, padding="20")
