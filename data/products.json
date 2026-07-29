@@ -339,7 +339,8 @@
       "created": "2026-07-28",
       "flags": [
         "sale1"
-      ]
+      ],
+      "featured": true
     },
     {
       "id": "hypercube-purple-gold",
@@ -423,7 +424,8 @@
       "created": "2026-07-28",
       "flags": [
         "sale1"
-      ]
+      ],
+      "featured": true
     },
     {
       "id": "organic-crystal-blue",
@@ -451,7 +453,8 @@
       "created": "2026-07-28",
       "flags": [
         "sale1"
-      ]
+      ],
+      "featured": true
     },
     {
       "id": "rainbow-spiral",
@@ -549,7 +552,8 @@
       "created": "2026-07-28",
       "flags": [
         "sale1"
-      ]
+      ],
+      "featured": true
     },
     {
       "id": "falcon-fire",
@@ -675,7 +679,8 @@
       "created": "2026-07-28",
       "flags": [
         "sale1"
-      ]
+      ],
+      "featured": true
     },
     {
       "id": "sacred-owl-silver",
@@ -703,7 +708,8 @@
       "created": "2026-07-28",
       "flags": [
         "sale1"
-      ]
+      ],
+      "featured": true
     },
     {
       "id": "stained-glass-geometric-wave",
@@ -717,7 +723,8 @@
       "created": "2026-07-28",
       "flags": [
         "sale1"
-      ]
+      ],
+      "featured": true
     },
     {
       "id": "aj-stoner-collab-blue",
@@ -731,7 +738,8 @@
       "created": "2026-07-28",
       "flags": [
         "sale1"
-      ]
+      ],
+      "featured": true
     },
     {
       "id": "aj-stoner-collab-silver-gold",
@@ -787,7 +795,8 @@
       "created": "2026-07-28",
       "flags": [
         "sale1"
-      ]
+      ],
+      "featured": true
     },
     {
       "id": "flower-mandala-colors",
@@ -913,7 +922,8 @@
       "created": "2026-07-28",
       "flags": [
         "sale1"
-      ]
+      ],
+      "featured": true
     },
     {
       "id": "symphony-mandala-gold",
