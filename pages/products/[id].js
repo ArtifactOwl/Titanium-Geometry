@@ -229,6 +229,12 @@ export default function ProductPage() {
               
               <h3 style={detailsTitleStyle}>Details</h3>
               <ul style={detailsListStyle}>
+                {/* Size leads the list, and is left out entirely when unset. */}
+                {product.size && String(product.size).trim() && (
+                  <li>
+                    <strong>Size:</strong> {String(product.size).trim()}
+                  </li>
+                )}
                 <li>Individually laser engraved, colored, and cut</li>
                 <li>Lightweight titanium (approximately 8 grams)</li>
                 <li>Anodized color - will never crack or peel</li>

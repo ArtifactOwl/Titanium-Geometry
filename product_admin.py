@@ -52,6 +52,9 @@ Care:
 FLAG_KEYS = ["sale1", "sale2", "sale3"]
 DEFAULT_FLAG_NAMES = {"sale1": "Sale 1", "sale2": "Sale 2", "sale3": "Sale 3"}
 FLAG_TARGET_PREFIX = "Flag: "
+# Size is a short free-text note ("1.2 inch / 3cm"), shown as the first
+# bullet under Details on the product page. Kept short so it stays a size.
+SIZE_MAX_LENGTH = 64
 CHECK_ON = "☑"
 CHECK_OFF = "☐"
 
@@ -135,6 +138,12 @@ class ProductAdminApp:
         with open(SETTINGS_FILE, 'w') as f:
             json.dump(self.settings, f, indent=2)
     
+    def clean_size(self, text):
+        """Trim a size note and cap its length. Returns '' when there's nothing
+        worth storing, so callers can leave the field out entirely."""
+        size = " ".join(str(text or "").split())
+        return size[:SIZE_MAX_LENGTH]
+
     def slugify(self, text):
         text = text.lower().strip()
         text = re.sub(r'[^\w\s-]', '', text)
@@ -264,6 +273,10 @@ class ProductAdminApp:
         self.price_entry.insert(0, "75")
         self.price_entry.pack(anchor='w', pady=(0, 10))
         
+        ttk.Label(main_frame, text=f"Size (optional, max {SIZE_MAX_LENGTH} chars — e.g. 1.2 inch / 3cm):").pack(anchor='w')
+        self.size_entry = ttk.Entry(main_frame, width=40)
+        self.size_entry.pack(anchor='w', pady=(0, 10))
+
         ttk.Label(main_frame, text="Description:").pack(anchor='w')
         self.desc_text = scrolledtext.ScrolledText(main_frame, width=50, height=4)
         self.desc_text.pack(fill='x', pady=(0, 10))
@@ -383,6 +396,8 @@ class ProductAdminApp:
                    "itemId": item_id,
                    "created": datetime.now().strftime("%Y-%m-%d")}
         if youtube_id: product["youtubeId"] = youtube_id
+        size = self.clean_size(self.size_entry.get())
+        if size: product["size"] = size
         self.set_product_flags(product, [k for k, v in self.add_flag_vars.items() if v.get()])
 
         self.data['products'].append(product)
@@ -394,6 +409,7 @@ class ProductAdminApp:
         self.desc_text.delete("1.0", tk.END)
         self.price_entry.delete(0, tk.END)
         self.price_entry.insert(0, "75")
+        self.size_entry.delete(0, tk.END)
         self.youtube_entry.delete(0, tk.END)
         self.folder_var.set("(enter product name above)")
         self.add_status_var.set(f"Added: {name} ({item_id})")
@@ -457,6 +473,14 @@ class ProductAdminApp:
         ttk.Radiobutton(name_row, text="Item number", variable=self.batch_name_mode, 
                        value="itemnumber", command=self.batch_refresh_preview).pack(side='left', padx=5)
         
+        # Size (applied to every product in the batch)
+        size_row = ttk.Frame(settings_frame)
+        size_row.pack(fill='x', pady=5)
+        ttk.Label(size_row, text="Size:", width=12).pack(side='left')
+        self.batch_size_entry = ttk.Entry(size_row, width=28)
+        self.batch_size_entry.pack(side='left', padx=5)
+        ttk.Label(size_row, text="optional — e.g. 1.2 inch / 3cm", foreground='gray').pack(side='left', padx=5)
+
         # Description
         desc_row = ttk.Frame(settings_frame)
         desc_row.pack(fill='x', pady=5)
@@ -610,6 +634,7 @@ class ProductAdminApp:
             description = base_desc
         
         batch_flags = [k for k, v in self.batch_flag_vars.items() if v.get()]
+        batch_size = self.clean_size(self.batch_size_entry.get())
         flags_note = ", ".join(self.flag_label(k) for k in batch_flags) or "none"
 
         # Confirm
@@ -667,6 +692,7 @@ class ProductAdminApp:
                        "group": group, "folder": slug, "status": "available",
                        "itemId": item_id,
                        "created": datetime.now().strftime("%Y-%m-%d")}
+            if batch_size: product["size"] = batch_size
             self.set_product_flags(product, batch_flags)
             self.data['products'].append(product)
             created += 1
@@ -743,7 +769,7 @@ class ProductAdminApp:
         for row, btns in enumerate([
             [("Mark Sold", self.mark_sold), ("Mark Pending", self.mark_pending), ("Mark Available", self.mark_available), ("Delete", self.delete_product)],
             [("Edit Price", self.edit_price), ("Edit Description", self.edit_description), ("Change Group", self.change_group), ("Open Images Folder", self.open_product_folder)],
-            [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous), ("Edit Flags", self.edit_flags), ("Edit Keywords", self.edit_keywords)]
+            [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous), ("Edit Flags", self.edit_flags), ("Edit Keywords", self.edit_keywords), ("Edit Size", self.edit_size)]
         ]):
             btn_frame = ttk.Frame(main_frame)
             btn_frame.pack(fill='x', pady=3)
@@ -1003,6 +1029,9 @@ class ProductAdminApp:
             messagebox.showinfo("Done", "All products already have item IDs")
     
     def refresh_product_list(self):
+        # Rebuilding the tree drops the selection, which is jarring right after
+        # editing a product — remember it and put it back.
+        previous = self.product_tree.selection()
         for item in self.product_tree.get_children():
             self.product_tree.delete(item)
         self.data = self.load_data()
@@ -1029,7 +1058,11 @@ class ProductAdminApp:
                                              price_display, status, has_video) + flag_cells)
         
         self.group_combo['values'] = self.data['groups']
-    
+
+        still_there = [pid for pid in previous if self.product_tree.exists(pid)]
+        if still_there:
+            self.product_tree.selection_set(still_there)
+
     def get_selected_product(self):
         selection = self.product_tree.selection()
         if not selection:
@@ -1070,6 +1103,33 @@ class ProductAdminApp:
         self.save_data(); self.refresh_product_list()
         messagebox.showinfo("Done", "Product deleted")
     
+    def edit_size(self):
+        """Size shows as the first bullet under Details on the product page.
+        Clearing it removes the field, so the bullet disappears."""
+        pid = self.get_selected_product()
+        if not pid: return
+        product = next((p for p in self.data['products'] if p['id'] == pid), None)
+        if not product: return
+
+        answer = simpledialog.askstring(
+            "Edit Size",
+            f"{product['name']}\n\n"
+            f"Size (max {SIZE_MAX_LENGTH} characters, e.g. \"1.2 inch / 3cm\").\n"
+            "Leave blank to remove it from the product page:",
+            initialvalue=product.get('size', ''))
+        if answer is None:
+            return
+
+        size = self.clean_size(answer)
+        if size:
+            product['size'] = size
+        else:
+            product.pop('size', None)   # keep products.json tidy
+        self.save_data()
+        self.refresh_product_list()
+        self.manage_status_var.set(
+            f"Size for {product.get('itemId') or product['name']}: {size or '(removed)'}")
+
     def edit_keywords(self):
         """Search keywords for the shop's search box (e.g. animals, mandala,
         geometry). Not shown to customers — they only make the piece findable."""
