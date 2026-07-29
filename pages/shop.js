@@ -5,7 +5,8 @@ import { useRouter } from "next/router";
 import products from "../data/products.json";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { effectivePrice, priceInfo } from "../lib/pricing";
+import { effectivePrice } from "../lib/pricing";
+import ProductCard from "../components/ProductCard";
 import { SORT_OPTIONS, filterProducts, keywordCounts, sortProducts } from "../lib/search";
 
 export default function Shop() {
@@ -156,7 +157,7 @@ export default function Shop() {
             <h2 style={h2Style}>Recently Sold</h2>
             <div style={gridStyle}>
               {soldProducts.map((product) => (
-                <ProductCard key={product.id} product={product} sold />
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           </>
@@ -168,50 +169,6 @@ export default function Shop() {
   );
 }
 
-function ProductCard({ product, sold }) {
-  const [imageError, setImageError] = useState(false);
-  const imageSrc = `/pendants/${product.folder}/1.jpg`;
-  const isPending = product.status === 'pending';
-  const isSold = product.status === 'sold';
-  
-  return (
-    <Link href={`/products/${product.id}`} style={{textDecoration: 'none', color: 'inherit'}}>
-      <div style={{...cardStyle, opacity: (isSold || isPending) ? 0.6 : 1}}>
-        {isSold && <div style={soldBadgeStyle}>SOLD</div>}
-        {isPending && <div style={pendingBadgeStyle}>PENDING</div>}
-        {product.featured && !isSold && !isPending && (
-          <div style={featuredBadgeStyle}>★ Featured</div>
-        )}
-        <div style={imageContainerStyle}>
-          {!imageError ? (
-            <img 
-              src={imageSrc} 
-              alt={product.name}
-              style={imageStyle}
-              onError={() => setImageError(true)}
-            />
-          ) : (
-            <div style={placeholderStyle}>No Image</div>
-          )}
-        </div>
-        <h3 style={cardTitleStyle}>{product.name}</h3>
-        <p style={cardGroupStyle}>{product.group}</p>
-        {(() => {
-          const pricing = priceInfo(product);
-          return pricing.onSale ? (
-            <p style={cardPriceStyle}>
-              <span style={{ color: "#dc2626" }}>${pricing.final}</span>{" "}
-              <span style={cardWasStyle}>${pricing.list}</span>{" "}
-              <span style={cardSaleBadgeStyle}>SALE</span>
-            </p>
-          ) : (
-            <p style={cardPriceStyle}>${pricing.final}</p>
-          );
-        })()}
-      </div>
-    </Link>
-  );
-}
 
 // Styles
 const pageStyle = {
@@ -335,109 +292,17 @@ const gridStyle = {
   gap: "1.5rem",
 };
 
-const cardStyle = {
-  border: "1px solid #e5e7eb",
-  borderRadius: "8px",
-  overflow: "hidden",
-  cursor: "pointer",
-  transition: "box-shadow 0.2s",
-  position: "relative",
-};
 
-const soldBadgeStyle = {
-  position: "absolute",
-  top: "10px",
-  right: "10px",
-  background: "#ef4444",
-  color: "white",
-  padding: "0.25rem 0.5rem",
-  borderRadius: "4px",
-  fontSize: "0.75rem",
-  fontWeight: "bold",
-  zIndex: 1,
-};
 
-const pendingBadgeStyle = {
-  position: "absolute",
-  top: "10px",
-  right: "10px",
-  background: "#f59e0b",
-  color: "white",
-  padding: "0.25rem 0.5rem",
-  borderRadius: "4px",
-  fontSize: "0.75rem",
-  fontWeight: "bold",
-  zIndex: 1,
-};
 
-const featuredBadgeStyle = {
-  position: "absolute",
-  top: "10px",
-  left: "10px",
-  background: "#111827",
-  color: "white",
-  padding: "0.25rem 0.5rem",
-  borderRadius: "4px",
-  fontSize: "0.75rem",
-  fontWeight: "bold",
-  zIndex: 1,
-};
 
-const imageContainerStyle = {
-  width: "100%",
-  height: "200px",
-  overflow: "hidden",
-  background: "#f3f4f6",
-};
 
-const imageStyle = {
-  width: "100%",
-  height: "100%",
-  objectFit: "cover",
-};
 
-const placeholderStyle = {
-  width: "100%",
-  height: "100%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: "#9ca3af",
-};
 
-const cardTitleStyle = {
-  margin: "1rem 1rem 0.25rem",
-  fontSize: "1rem",
-};
 
-const cardGroupStyle = {
-  margin: "0 1rem",
-  color: "#6b7280",
-  fontSize: "0.85rem",
-};
 
-const cardPriceStyle = {
-  margin: "0.5rem 1rem 1rem",
-  fontWeight: "bold",
-  fontSize: "1.1rem",
-};
 
-const cardWasStyle = {
-  textDecoration: "line-through",
-  color: "#9ca3af",
-  fontWeight: "normal",
-  fontSize: "0.95rem",
-};
 
-const cardSaleBadgeStyle = {
-  background: "#dc2626",
-  color: "white",
-  padding: "0.1rem 0.4rem",
-  borderRadius: "4px",
-  fontSize: "0.7rem",
-  fontWeight: "bold",
-  verticalAlign: "middle",
-};
 
 const emptyStyle = {
   textAlign: "center",
