@@ -62,9 +62,10 @@ SIZE_MAX_LENGTH = 64
 # Ad creative sizes Meta accepts. 4:5 fills the most screen in a phone feed,
 # 1:1 is the safe all-rounder, 9:16 is for Stories/Reels.
 AD_RATIOS = [
-    ("4:5  feed (best)", 1080, 1350),
-    ("1:1  square",      1080, 1080),
-    ("9:16 stories",     1080, 1920),
+    # label, width, height, filename suffix
+    ("4:5  feed (best)", 1080, 1350, "45"),
+    ("1:1  square",      1080, 1080, "11"),
+    ("9:16 stories",     1080, 1920, "916"),
 ]
 AD_OUTPUT_DIR = os.path.join(PROJECT_PATH, "ad-images")
 
@@ -169,6 +170,15 @@ class ProductAdminApp:
         with open(SETTINGS_FILE, 'w') as f:
             json.dump(self.settings, f, indent=2)
     
+    def filename_safe(self, text, limit=40):
+        """Product names contain slashes, commas and ampersands, none of which
+        belong in a filename — turn one into a tidy hyphenated fragment."""
+        cleaned = re.sub(r'[\/:*?"<>|]', ' ', str(text or ""))
+        cleaned = re.sub(r"[^\w\s-]", " ", cleaned)
+        cleaned = re.sub(r"[\s_]+", "-", cleaned.strip())
+        cleaned = re.sub(r"-{2,}", "-", cleaned).strip("-")
+        return cleaned[:limit].strip("-") or "item"
+
     def clean_size(self, text):
         """Trim a size note and cap its length. Returns '' when there's nothing
         worth storing, so callers can leave the field out entirely."""
@@ -2188,7 +2198,7 @@ class ProductAdminApp:
         shape.pack(fill='x', pady=6)
         ttk.Label(shape, text="Shape:").pack(side='left')
         self.ad_ratio_var = tk.IntVar(value=0)
-        for i, (label, _, _) in enumerate(AD_RATIOS):
+        for i, (label, _, _, _) in enumerate(AD_RATIOS):
             ttk.Radiobutton(shape, text=label, variable=self.ad_ratio_var, value=i,
                             command=self.ad_reset_crop).pack(side='left', padx=6)
         ttk.Button(shape, text="Zoom In", command=lambda: self.ad_zoom(0.9)).pack(side='right', padx=3)
@@ -2288,7 +2298,7 @@ class ProductAdminApp:
         if not self.ad_preview:
             return
         pw, ph = self.ad_preview.size
-        _, tw, th = AD_RATIOS[self.ad_ratio_var.get()]
+        _, tw, th, _ = AD_RATIOS[self.ad_ratio_var.get()]
         ratio = tw / th
         # biggest box of this shape that fits, centred
         w = min(pw, ph * ratio)
@@ -2300,7 +2310,7 @@ class ProductAdminApp:
         if not self.ad_box or not self.ad_preview:
             return
         pw, ph = self.ad_preview.size
-        _, tw, th = AD_RATIOS[self.ad_ratio_var.get()]
+        _, tw, th, _ = AD_RATIOS[self.ad_ratio_var.get()]
         ratio = tw / th
         x, y, w, h = self.ad_box
         cx, cy = x + w / 2, y + h / 2
@@ -2361,7 +2371,7 @@ class ProductAdminApp:
             self.ad_canvas.create_line(ox + x, oy + y + h * i / 3,
                                        ox + x + w, oy + y + h * i / 3,
                                        fill='#ffcc00', dash=(2, 4))
-        label, tw, th = AD_RATIOS[self.ad_ratio_var.get()]
+        label, tw, th, _ = AD_RATIOS[self.ad_ratio_var.get()]
         src_w = int(w / self.ad_view_scale)
         note = f"{label}  →  {tw}x{th}"
         if src_w < tw:
@@ -2372,7 +2382,7 @@ class ProductAdminApp:
     def ad_crop_and_save(self, ratio_index):
         from PIL import Image as PILImage
         product = self.ad_current_product()
-        label, tw, th = AD_RATIOS[ratio_index]
+        label, tw, th, suffix = AD_RATIOS[ratio_index]
         x, y, w, h = self.ad_box
         s = self.ad_view_scale
         box = (int(x / s), int(y / s), int((x + w) / s), int((y + h) / s))
@@ -2380,8 +2390,7 @@ class ProductAdminApp:
                min(self.ad_source.width, box[2]), min(self.ad_source.height, box[3]))
         crop = self.ad_source.crop(box).resize((tw, th), PILImage.LANCZOS)
         os.makedirs(AD_OUTPUT_DIR, exist_ok=True)
-        shape = label.split()[0].replace(':', 'x')
-        base = f"{product.get('itemId', product['id'])}-{shape}.jpg"
+        base = f"{product.get('itemId', product['id'])}-{self.filename_safe(product['name'])}-{suffix}.jpg"
         out = os.path.join(AD_OUTPUT_DIR, base)
         crop.save(out, 'JPEG', quality=90, optimize=True)
         return base, box
