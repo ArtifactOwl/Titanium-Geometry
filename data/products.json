@@ -338,7 +338,8 @@
       "itemId": "G0020",
       "created": "2026-07-28",
       "flags": [
-        "sale1"
+        "sale1",
+        "sale3"
       ],
       "featured": true
     },
@@ -424,8 +425,7 @@
       "created": "2026-07-28",
       "flags": [
         "sale1"
-      ],
-      "featured": true
+      ]
     },
     {
       "id": "organic-crystal-blue",
@@ -1202,6 +1202,19 @@
       "itemId": "O0024",
       "created": "2026-07-30",
       "size": "1.3\" or 3.2cm",
+      "featured": true
+    },
+    {
+      "id": "rainbow-eye-of-illusion",
+      "name": "Rainbow Eye of Illusion",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 100.0,
+      "group": "Geometric Pendants",
+      "folder": "rainbow-eye-of-illusion",
+      "status": "available",
+      "itemId": "G0062",
+      "created": "2026-07-30",
+      "size": "2\" or 5cm wide",
       "featured": true
     }
   ],
