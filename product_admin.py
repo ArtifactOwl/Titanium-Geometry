@@ -59,6 +59,15 @@ FLAG_TARGET_PREFIX = "Flag: "
 # bullet under Details on the product page. Kept short so it stays a size.
 SIZE_MAX_LENGTH = 64
 
+# Ad creative sizes Meta accepts. 4:5 fills the most screen in a phone feed,
+# 1:1 is the safe all-rounder, 9:16 is for Stories/Reels.
+AD_RATIOS = [
+    ("4:5  feed (best)", 1080, 1350),
+    ("1:1  square",      1080, 1080),
+    ("9:16 stories",     1080, 1920),
+]
+AD_OUTPUT_DIR = os.path.join(PROJECT_PATH, "ad-images")
+
 # Only these paths get published — everything the admin tool actually edits.
 # Deliberately narrow so a stray file in the project can never be swept into a
 # commit by accident.
@@ -98,6 +107,7 @@ class ProductAdminApp:
         self.coupons_tab = ttk.Frame(self.notebook)
         self.groups_tab = ttk.Frame(self.notebook)
         self.videos_tab = ttk.Frame(self.notebook)
+        self.ads_tab = ttk.Frame(self.notebook)
         self.publish_tab = ttk.Frame(self.notebook)
         self.settings_tab = ttk.Frame(self.notebook)
         
@@ -109,6 +119,7 @@ class ProductAdminApp:
         self.notebook.add(self.coupons_tab, text="  Coupons  ")
         self.notebook.add(self.groups_tab, text="  Groups  ")
         self.notebook.add(self.videos_tab, text="  Videos  ")
+        self.notebook.add(self.ads_tab, text="  Ad Images  ")
         self.notebook.add(self.publish_tab, text="  Publish  ")
         self.notebook.add(self.settings_tab, text="  Settings  ")
         
@@ -120,6 +131,7 @@ class ProductAdminApp:
         self.create_coupons_tab()
         self.create_groups_tab()
         self.create_videos_tab()
+        self.create_ads_tab()
         self.create_publish_tab()
         self.create_settings_tab()
         
@@ -2142,6 +2154,273 @@ class ProductAdminApp:
         self.coupons.remove(c)
         self.save_coupons()
         self.refresh_coupon_list()
+
+    # ==================== AD IMAGES TAB ====================
+    def create_ads_tab(self):
+        main_frame = ttk.Frame(self.ads_tab, padding="14")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(main_frame, text="Crop Photos for Facebook Ads",
+                  font=('Helvetica', 15, 'bold')).pack()
+        ttk.Label(main_frame,
+                  text="Drag the box to choose what's in frame; the scroll wheel or the "
+                       "buttons zoom it. Saved images are the exact size Meta wants.",
+                  foreground='gray').pack(pady=(0, 8))
+
+        picker = ttk.Frame(main_frame)
+        picker.pack(fill='x', pady=4)
+        ttk.Label(picker, text="Product:").pack(side='left')
+        self.ad_product_var = tk.StringVar()
+        self.ad_product_combo = ttk.Combobox(picker, textvariable=self.ad_product_var,
+                                             width=44, state='readonly')
+        self.ad_product_combo.pack(side='left', padx=6)
+        self.ad_product_combo.bind('<<ComboboxSelected>>', lambda e: self.ad_load_photo_list())
+
+        ttk.Label(picker, text="Photo:").pack(side='left', padx=(10, 0))
+        self.ad_photo_var = tk.StringVar()
+        self.ad_photo_combo = ttk.Combobox(picker, textvariable=self.ad_photo_var,
+                                           width=10, state='readonly')
+        self.ad_photo_combo.pack(side='left', padx=6)
+        self.ad_photo_combo.bind('<<ComboboxSelected>>', lambda e: self.ad_load_image())
+        ttk.Button(picker, text="Refresh List", command=self.ad_refresh_products).pack(side='left', padx=6)
+
+        shape = ttk.Frame(main_frame)
+        shape.pack(fill='x', pady=6)
+        ttk.Label(shape, text="Shape:").pack(side='left')
+        self.ad_ratio_var = tk.IntVar(value=0)
+        for i, (label, _, _) in enumerate(AD_RATIOS):
+            ttk.Radiobutton(shape, text=label, variable=self.ad_ratio_var, value=i,
+                            command=self.ad_reset_crop).pack(side='left', padx=6)
+        ttk.Button(shape, text="Zoom In", command=lambda: self.ad_zoom(0.9)).pack(side='right', padx=3)
+        ttk.Button(shape, text="Zoom Out", command=lambda: self.ad_zoom(1.1)).pack(side='right', padx=3)
+        ttk.Button(shape, text="Re-centre", command=self.ad_reset_crop).pack(side='right', padx=3)
+
+        self.ad_canvas = tk.Canvas(main_frame, width=620, height=430, bg='#2b2b2b',
+                                   highlightthickness=1, highlightbackground='#999')
+        self.ad_canvas.pack(pady=6)
+        self.ad_canvas.bind('<Button-1>', self.ad_drag_start)
+        self.ad_canvas.bind('<B1-Motion>', self.ad_drag_move)
+        self.ad_canvas.bind('<MouseWheel>', lambda e: self.ad_zoom(0.9 if e.delta > 0 else 1.1))
+
+        actions = ttk.Frame(main_frame)
+        actions.pack(fill='x', pady=4)
+        ttk.Button(actions, text="Save This Shape", command=self.ad_save_current).pack(side='left')
+        ttk.Button(actions, text="Save All Three Shapes",
+                   command=self.ad_save_all).pack(side='left', padx=6)
+        ttk.Button(actions, text="Open Folder", command=self.ad_open_folder).pack(side='left')
+        self.ad_status_var = tk.StringVar(value="")
+        ttk.Label(actions, textvariable=self.ad_status_var, foreground='#0a7').pack(side='left', padx=12)
+
+        # state
+        self.ad_source = None       # full-resolution PIL image
+        self.ad_preview = None      # scaled copy shown on the canvas
+        self.ad_tk = None           # keeps the PhotoImage alive
+        self.ad_view_scale = 1.0    # preview px per source px
+        self.ad_box = None          # [x, y, w, h] in preview coords
+        self.ad_drag = None
+        self.ad_refresh_products()
+
+    def ad_refresh_products(self):
+        items = []
+        self._ad_lookup = {}
+        for p in self.data['products']:
+            star = "* " if p.get('featured') else "  "
+            label = f"{star}{p.get('itemId', '?')}  {p['name']}"
+            items.append(label)
+            self._ad_lookup[label] = p
+        self.ad_product_combo['values'] = items
+        if items and not self.ad_product_var.get():
+            self.ad_product_combo.current(0)
+            self.ad_load_photo_list()
+
+    def ad_current_product(self):
+        return self._ad_lookup.get(self.ad_product_var.get())
+
+    def ad_load_photo_list(self):
+        product = self.ad_current_product()
+        if not product:
+            return
+        folder = os.path.join(PENDANTS_FOLDER, product['folder'])
+        photos = []
+        if os.path.isdir(folder):
+            photos = sorted(
+                (f for f in os.listdir(folder)
+                 if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))),
+                key=lambda f: (int(re.match(r'(\d+)', f).group(1))
+                               if re.match(r'(\d+)', f) else 9999, f))
+        self.ad_photo_combo['values'] = photos
+        if photos:
+            self.ad_photo_combo.current(0)
+            self.ad_load_image()
+        else:
+            self.ad_canvas.delete('all')
+            self.ad_status_var.set("That product has no photos")
+
+    def ad_load_image(self):
+        product = self.ad_current_product()
+        name = self.ad_photo_var.get()
+        if not product or not name:
+            return
+        path = os.path.join(PENDANTS_FOLDER, product['folder'], name)
+        try:
+            from PIL import Image as PILImage, ImageOps, ImageTk
+        except ImportError:
+            return messagebox.showerror(
+                "Pillow required",
+                "This needs Pillow to read images:\n\n    pip install Pillow")
+        try:
+            img = PILImage.open(path)
+            # honour the camera's rotation tag, or the crop won't match what you see
+            img = ImageOps.exif_transpose(img).convert('RGB')
+        except Exception as e:
+            return messagebox.showerror("Error", f"Couldn't open {name}:\n{e}")
+
+        self.ad_source = img
+        cw, ch = int(self.ad_canvas['width']), int(self.ad_canvas['height'])
+        self.ad_view_scale = min(cw / img.width, ch / img.height)
+        self.ad_preview = img.resize(
+            (max(1, int(img.width * self.ad_view_scale)),
+             max(1, int(img.height * self.ad_view_scale))), PILImage.LANCZOS)
+        self.ad_tk = ImageTk.PhotoImage(self.ad_preview)
+        self.ad_reset_crop()
+
+    def ad_reset_crop(self):
+        if not self.ad_preview:
+            return
+        pw, ph = self.ad_preview.size
+        _, tw, th = AD_RATIOS[self.ad_ratio_var.get()]
+        ratio = tw / th
+        # biggest box of this shape that fits, centred
+        w = min(pw, ph * ratio)
+        h = w / ratio
+        self.ad_box = [(pw - w) / 2, (ph - h) / 2, w, h]
+        self.ad_redraw()
+
+    def ad_zoom(self, factor):
+        if not self.ad_box or not self.ad_preview:
+            return
+        pw, ph = self.ad_preview.size
+        _, tw, th = AD_RATIOS[self.ad_ratio_var.get()]
+        ratio = tw / th
+        x, y, w, h = self.ad_box
+        cx, cy = x + w / 2, y + h / 2
+        w = max(40.0, min(w * factor, pw, ph * ratio))
+        h = w / ratio
+        self.ad_box = [cx - w / 2, cy - h / 2, w, h]
+        self.ad_clamp()
+        self.ad_redraw()
+
+    def ad_clamp(self):
+        pw, ph = self.ad_preview.size
+        x, y, w, h = self.ad_box
+        x = max(0, min(x, pw - w))
+        y = max(0, min(y, ph - h))
+        self.ad_box = [x, y, w, h]
+
+    def ad_drag_start(self, event):
+        if not self.ad_box:
+            return
+        self.ad_drag = (event.x, event.y, self.ad_box[0], self.ad_box[1])
+
+    def ad_drag_move(self, event):
+        if not self.ad_drag or not self.ad_box:
+            return
+        sx, sy, bx, by = self.ad_drag
+        self.ad_box[0] = bx + (event.x - sx)
+        self.ad_box[1] = by + (event.y - sy)
+        self.ad_clamp()
+        self.ad_redraw()
+
+    def _ad_offset(self):
+        """Where the preview sits on the canvas (it's centred)."""
+        cw, ch = int(self.ad_canvas['width']), int(self.ad_canvas['height'])
+        pw, ph = self.ad_preview.size
+        return ((cw - pw) // 2, (ch - ph) // 2)
+
+    def ad_redraw(self):
+        self.ad_canvas.delete('all')
+        if not self.ad_tk:
+            return
+        ox, oy = self._ad_offset()
+        self.ad_canvas.create_image(ox, oy, anchor='nw', image=self.ad_tk)
+        x, y, w, h = self.ad_box
+        # dim everything outside the crop so the framing is obvious
+        pw, ph = self.ad_preview.size
+        for rect in [(ox, oy, ox + pw, oy + y),
+                     (ox, oy + y + h, ox + pw, oy + ph),
+                     (ox, oy + y, ox + x, oy + y + h),
+                     (ox + x + w, oy + y, ox + pw, oy + y + h)]:
+            self.ad_canvas.create_rectangle(*rect, fill='#000000', stipple='gray50', outline='')
+        self.ad_canvas.create_rectangle(ox + x, oy + y, ox + x + w, oy + y + h,
+                                        outline='#ffcc00', width=2)
+        # rule-of-thirds guides
+        for i in (1, 2):
+            self.ad_canvas.create_line(ox + x + w * i / 3, oy + y,
+                                       ox + x + w * i / 3, oy + y + h,
+                                       fill='#ffcc00', dash=(2, 4))
+            self.ad_canvas.create_line(ox + x, oy + y + h * i / 3,
+                                       ox + x + w, oy + y + h * i / 3,
+                                       fill='#ffcc00', dash=(2, 4))
+        label, tw, th = AD_RATIOS[self.ad_ratio_var.get()]
+        src_w = int(w / self.ad_view_scale)
+        note = f"{label}  →  {tw}x{th}"
+        if src_w < tw:
+            note += f"   (only {src_w}px of photo — zoom out for full sharpness)"
+        self.ad_canvas.create_text(8, 8, anchor='nw', fill='#ffcc00', text=note,
+                                   font=('Segoe UI', 9, 'bold'))
+
+    def ad_crop_and_save(self, ratio_index):
+        from PIL import Image as PILImage
+        product = self.ad_current_product()
+        label, tw, th = AD_RATIOS[ratio_index]
+        x, y, w, h = self.ad_box
+        s = self.ad_view_scale
+        box = (int(x / s), int(y / s), int((x + w) / s), int((y + h) / s))
+        box = (max(0, box[0]), max(0, box[1]),
+               min(self.ad_source.width, box[2]), min(self.ad_source.height, box[3]))
+        crop = self.ad_source.crop(box).resize((tw, th), PILImage.LANCZOS)
+        os.makedirs(AD_OUTPUT_DIR, exist_ok=True)
+        shape = label.split()[0].replace(':', 'x')
+        base = f"{product.get('itemId', product['id'])}-{shape}.jpg"
+        out = os.path.join(AD_OUTPUT_DIR, base)
+        crop.save(out, 'JPEG', quality=90, optimize=True)
+        return base, box
+
+    def ad_save_current(self):
+        if not self.ad_box:
+            return messagebox.showwarning("Nothing loaded", "Pick a product and photo first")
+        name, _ = self.ad_crop_and_save(self.ad_ratio_var.get())
+        self.ad_status_var.set(f"Saved {name}")
+
+    def ad_save_all(self):
+        if not self.ad_box:
+            return messagebox.showwarning("Nothing loaded", "Pick a product and photo first")
+        keep = list(self.ad_box)
+        chosen = self.ad_ratio_var.get()
+        saved = []
+        for i in range(len(AD_RATIOS)):
+            # keep the same centre for each shape
+            cx = keep[0] + keep[2] / 2
+            cy = keep[1] + keep[3] / 2
+            self.ad_ratio_var.set(i)
+            self.ad_reset_crop()
+            w, h = self.ad_box[2], self.ad_box[3]
+            self.ad_box = [cx - w / 2, cy - h / 2, w, h]
+            self.ad_clamp()
+            saved.append(self.ad_crop_and_save(i)[0])
+        self.ad_ratio_var.set(chosen)
+        self.ad_box = keep
+        self.ad_redraw()
+        self.ad_status_var.set(f"Saved {len(saved)} images")
+        messagebox.showinfo("Saved", "Created:\n\n" + "\n".join(saved) +
+                            f"\n\nin {AD_OUTPUT_DIR}")
+
+    def ad_open_folder(self):
+        os.makedirs(AD_OUTPUT_DIR, exist_ok=True)
+        try:
+            os.startfile(AD_OUTPUT_DIR)
+        except Exception:
+            messagebox.showinfo("Folder", AD_OUTPUT_DIR)
 
     # ==================== PUBLISH TAB ====================
     def run_git(self, args, timeout=120):
