@@ -21,9 +21,11 @@ export default function Header({ active }) {
     <header style={headerStyle}>
       <Link href="/">
         <img
-          src="/titanium-geometry-full-color.svg"
+          src="/logo-header.png"
           alt="Titanium Geometry"
-          style={{ height: 50, cursor: "pointer" }}
+          width={320}
+          height={206}
+          style={{ height: 50, width: "auto", cursor: "pointer" }}
         />
       </Link>
       <nav style={navStyle}>

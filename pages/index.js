@@ -34,6 +34,15 @@ export default function Home() {
       {/* Hero */}
       <main style={mainStyle}>
         <section style={heroStyle}>
+          {/* Rendered to PNG from the logo SVG: the wordmark is set in Sylfaen,
+              a Windows-only font, so the SVG mis-renders on phones and Macs. */}
+          <img
+            src="/logo-banner.png"
+            alt="Titanium Geometry"
+            width={1400}
+            height={902}
+            style={heroLogoStyle}
+          />
           <h1 style={h1Style}>
             One-of-a-Kind Titanium Pendants
           </h1>
@@ -57,6 +66,15 @@ export default function Home() {
             <Link href="/shop" style={btnPrimaryStyle}>Shop Available Pieces</Link>
             <Link href="/commission" style={btnOutlineStyle}>Custom Items &amp; Designs</Link>
           </div>
+
+          <p style={heroContactStyle}>
+            <a href="https://facebook.com/TitaniumGeometry" style={heroContactLinkStyle}
+               target="_blank" rel="noopener noreferrer">facebook.com/TitaniumGeometry</a>
+            {" · "}
+            <a href="mailto:titaniumgeometry@gmail.com" style={heroContactLinkStyle}>
+              titaniumgeometry@gmail.com
+            </a>
+          </p>
         </section>
 
         {featured.length > 0 && (
@@ -230,10 +248,11 @@ const mainStyle = {
 };
 
 const h1Style = {
-  fontSize: "2.6rem",
-  lineHeight: 1.15,
+  fontSize: "1.9rem",
+  lineHeight: 1.2,
   textAlign: "center",
-  margin: "0 0 1rem",
+  fontWeight: 600,
+  margin: "0 0 0.9rem",
 };
 
 const h2Style = {
@@ -243,7 +262,26 @@ const h2Style = {
 
 const heroStyle = {
   textAlign: "center",
-  padding: "1rem 0 2.5rem",
+  padding: "0.5rem 0 2.5rem",
+};
+
+const heroLogoStyle = {
+  width: "100%",
+  maxWidth: "560px",
+  height: "auto",
+  margin: "0 auto 1.25rem",
+  display: "block",
+};
+
+const heroContactStyle = {
+  marginTop: "1.5rem",
+  color: "#6b7280",
+  fontSize: "0.9rem",
+};
+
+const heroContactLinkStyle = {
+  color: "#2563eb",
+  textDecoration: "none",
 };
 
 const subtitleStyle = {
