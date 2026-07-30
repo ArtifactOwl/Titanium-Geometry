@@ -25,7 +25,7 @@ export default function Home() {
     <div style={pageStyle}>
       <Head>
         <title>Titanium Geometry | Unique Titanium Pendants</title>
-        <meta name="description" content="One-of-a-kind titanium pendant necklaces with precision laser engraving and anodized coloring." />
+        <meta name="description" content="One-of-a-kind titanium pendants, keychains, knife handles and tools — laser engraved, cut, and anodized by hand. Each piece is made once and never repeated." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
@@ -33,11 +33,31 @@ export default function Home() {
 
       {/* Hero */}
       <main style={mainStyle}>
-        <h1 style={h1Style}>Titanium Pendant Necklaces</h1>
-        <p style={subtitleStyle}>
-          Unique titanium pendants, keychain fobs, and tools with precision laser engraving, cutting, and anodized coloring.
-          Each piece is one of a kind.
-        </p>
+        <section style={heroStyle}>
+          <h1 style={h1Style}>
+            One-of-a-Kind Titanium Pendants
+          </h1>
+          <p style={subtitleStyle}>
+            Every piece is laser engraved, cut, and anodized by hand — made once,
+            then never repeated. The colors come from the metal itself, so they
+            never crack, chip, or fade.
+          </p>
+
+          <ul style={heroFactsStyle}>
+            <li style={heroFactStyle}>Pendants</li>
+            <li style={heroFactStyle}>Keychains</li>
+            <li style={heroFactStyle}>Knife Handles</li>
+            <li style={heroFactStyle}>Tools</li>
+          </ul>
+          <p style={heroMaterialsStyle}>
+            Titanium · Brass · Steel · Tungsten
+          </p>
+
+          <div style={heroCtaStyle}>
+            <Link href="/shop" style={btnPrimaryStyle}>Shop Available Pieces</Link>
+            <Link href="/commission" style={btnOutlineStyle}>Custom Items &amp; Designs</Link>
+          </div>
+        </section>
 
         {featured.length > 0 && (
           <section style={sectionStyle}>
@@ -210,9 +230,10 @@ const mainStyle = {
 };
 
 const h1Style = {
-  fontSize: "2.5rem",
+  fontSize: "2.6rem",
+  lineHeight: 1.15,
   textAlign: "center",
-  marginBottom: "0.5rem",
+  margin: "0 0 1rem",
 };
 
 const h2Style = {
@@ -220,11 +241,50 @@ const h2Style = {
   marginBottom: "1rem",
 };
 
+const heroStyle = {
+  textAlign: "center",
+  padding: "1rem 0 2.5rem",
+};
+
 const subtitleStyle = {
   textAlign: "center",
+  color: "#4b5563",
+  fontSize: "1.1rem",
+  lineHeight: 1.6,
+  maxWidth: "620px",
+  margin: "0 auto 1.5rem",
+};
+
+const heroFactsStyle = {
+  listStyle: "none",
+  display: "flex",
+  justifyContent: "center",
+  flexWrap: "wrap",
+  gap: "0.5rem",
+  padding: 0,
+  margin: "0 0 0.75rem",
+};
+
+const heroFactStyle = {
+  border: "1px solid #e5e7eb",
+  borderRadius: "999px",
+  padding: "0.3rem 0.9rem",
+  fontSize: "0.9rem",
+  color: "#374151",
+};
+
+const heroMaterialsStyle = {
   color: "#6b7280",
-  maxWidth: "600px",
-  margin: "0 auto 2rem",
+  fontSize: "0.9rem",
+  letterSpacing: "0.03em",
+  margin: "0 0 1.75rem",
+};
+
+const heroCtaStyle = {
+  display: "flex",
+  justifyContent: "center",
+  gap: "1rem",
+  flexWrap: "wrap",
 };
 
 const railHintStyle = {
