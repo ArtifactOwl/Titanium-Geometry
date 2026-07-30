@@ -40,7 +40,7 @@ export default function Home() {
             src="/logo-banner.png"
             alt="Titanium Geometry"
             width={1500}
-            height={915}
+            height={940}
             style={heroLogoStyle}
           />
           <h1 style={h1Style}>
