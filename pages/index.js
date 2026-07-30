@@ -25,7 +25,7 @@ export default function Home() {
     <div style={pageStyle}>
       <Head>
         <title>Titanium Geometry | Unique Titanium Pendants</title>
-        <meta name="description" content="One-of-a-kind titanium pendants, keychains, knife handles and tools — laser engraved, cut, and anodized by hand. Each piece is made once and never repeated." />
+        <meta name="description" content="One-of-a-kind titanium pendants, keychains, knife handles and tools — individually laser engraved, cut, and anodized. Each piece is made once and never repeated." />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
@@ -39,17 +39,17 @@ export default function Home() {
           <img
             src="/logo-banner.png"
             alt="Titanium Geometry"
-            width={1400}
-            height={902}
+            width={1500}
+            height={877}
             style={heroLogoStyle}
           />
           <h1 style={h1Style}>
             One-of-a-Kind Titanium Pendants
           </h1>
           <p style={subtitleStyle}>
-            Every piece is laser engraved, cut, and anodized by hand — made once,
-            then never repeated. The colors come from the metal itself, so they
-            never crack, chip, or fade.
+            Every piece is individually laser engraved, cut, and anodized — made
+            once, then never repeated. The colors come from the metal itself, so
+            they never crack, chip, or fade.
           </p>
 
           <ul style={heroFactsStyle}>

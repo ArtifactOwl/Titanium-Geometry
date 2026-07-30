@@ -23,8 +23,8 @@ export default function Header({ active }) {
         <img
           src="/logo-header.png"
           alt="Titanium Geometry"
-          width={320}
-          height={206}
+          width={340}
+          height={199}
           style={{ height: 50, width: "auto", cursor: "pointer" }}
         />
       </Link>
