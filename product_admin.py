@@ -779,7 +779,7 @@ class ProductAdminApp:
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
-        columns = ('itemId', 'name', 'group', 'price', 'status', 'video') + tuple(FLAG_KEYS) + ('featured',)
+        columns = ('itemId', 'name', 'group', 'price', 'status', 'video') + tuple(FLAG_KEYS) + ('featured', 'fbFeatured')
         self.product_tree = ttk.Treeview(list_frame, columns=columns, show='headings',
                                          height=10, selectmode='extended')
         for col, w in [('itemId', 70), ('name', 170), ('group', 105), ('price', 85), ('status', 65), ('video', 45)]:
@@ -791,6 +791,8 @@ class ProductAdminApp:
             self.product_tree.column(key, width=80, anchor='center', stretch=False)
         self.product_tree.heading('featured', text='Featured')
         self.product_tree.column('featured', width=70, anchor='center', stretch=False)
+        self.product_tree.heading('fbFeatured', text='FB Ad')
+        self.product_tree.column('fbFeatured', width=60, anchor='center', stretch=False)
         self.product_tree.bind('<Button-1>', self.on_product_tree_click)
         
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.product_tree.yview)
@@ -834,7 +836,7 @@ class ProductAdminApp:
         if not (0 <= col_index < len(columns)):
             return
         flag_key = columns[col_index]
-        if flag_key not in FLAG_KEYS and flag_key != 'featured':
+        if flag_key not in FLAG_KEYS and flag_key not in ('featured', 'fbFeatured'):
             return  # not a checkbox column — let the normal click through
 
         row = self.product_tree.identify_row(event.y)
@@ -843,32 +845,33 @@ class ProductAdminApp:
 
         selection = self.product_tree.selection()
         targets = selection if (row in selection and len(selection) > 1) else (row,)
-        if flag_key == 'featured':
-            self.toggle_featured_for(targets, row)
+        if flag_key in ('featured', 'fbFeatured'):
+            self.toggle_featured_for(targets, row, key=flag_key)
         else:
             self.toggle_flag_for(targets, flag_key, row)
         return 'break'  # keep the current selection instead of resetting it
 
-    def toggle_featured_for(self, product_ids, anchor_id):
-        """Featured pieces are pinned to the top of the shop's default
-        ("Featured") sort and get a badge on their card."""
+    def toggle_featured_for(self, product_ids, anchor_id, key='featured'):
+        """`featured` pins a piece to the top of the shop and the homepage rail.
+        `fbFeatured` is the separate, usually smaller set that the Facebook ad
+        landing page leads with."""
         by_id = {p['id']: p for p in self.data['products']}
         anchor = by_id.get(anchor_id)
         if not anchor:
             return
-        turn_on = not anchor.get('featured')
+        turn_on = not anchor.get(key)
 
         changed = 0
         for pid in product_ids:
             product = by_id.get(pid)
             if not product:
                 continue
-            if bool(product.get('featured')) == turn_on:
+            if bool(product.get(key)) == turn_on:
                 continue
             if turn_on:
-                product['featured'] = True
+                product[key] = True
             else:
-                product.pop('featured', None)   # keep products.json tidy
+                product.pop(key, None)   # keep products.json tidy
             changed += 1
 
         if not changed:
@@ -879,10 +882,11 @@ class ProductAdminApp:
         still_there = [pid for pid in keep if self.product_tree.exists(pid)]
         if still_there:
             self.product_tree.selection_set(still_there)
-        total = sum(1 for p in self.data['products'] if p.get('featured'))
+        total = sum(1 for p in self.data['products'] if p.get(key))
+        what = 'FB ad' if key == 'fbFeatured' else 'Featured'
         self.manage_status_var.set(
-            f"{'Featured' if turn_on else 'Unfeatured'} {changed} product"
-            f"{'s' if changed != 1 else ''} ({total} featured in total)")
+            f"{'Added to' if turn_on else 'Removed from'} {what}: {changed} product"
+            f"{'s' if changed != 1 else ''} ({total} in total)")
 
     def toggle_flag_for(self, product_ids, flag_key, anchor_id):
         """Flip the flag on the clicked row, then apply that same state to every
@@ -1094,6 +1098,7 @@ class ProductAdminApp:
             flags = self.product_flags(product)
             flag_cells = tuple(CHECK_ON if k in flags else CHECK_OFF for k in FLAG_KEYS)
             flag_cells += (CHECK_ON if product.get('featured') else CHECK_OFF,)
+            flag_cells += (CHECK_ON if product.get('fbFeatured') else CHECK_OFF,)
             self.product_tree.insert('', tk.END, iid=product['id'],
                                      values=(item_id, product['name'], product['group'],
                                              price_display, status, has_video) + flag_cells)
@@ -2205,6 +2210,20 @@ class ProductAdminApp:
         ttk.Button(shape, text="Zoom Out", command=lambda: self.ad_zoom(1.1)).pack(side='right', padx=3)
         ttk.Button(shape, text="Re-centre", command=self.ad_reset_crop).pack(side='right', padx=3)
 
+        pad = ttk.Frame(main_frame)
+        pad.pack(fill='x', pady=(0, 4))
+        ttk.Label(pad, text="Fill around the photo:").pack(side='left')
+        for name, value in [("Black", "#000000"), ("White", "#ffffff"),
+                            ("Charcoal", "#1f2937"), ("Cream", "#f5f1e8")]:
+            ttk.Button(pad, text=name, width=9,
+                       command=lambda v=value: self.ad_set_pad(v)).pack(side='left', padx=2)
+        ttk.Button(pad, text="Pick…", width=7, command=self.ad_pick_pad).pack(side='left', padx=2)
+        self.ad_pad_swatch = tk.Canvas(pad, width=26, height=18, highlightthickness=1,
+                                       highlightbackground='#888')
+        self.ad_pad_swatch.pack(side='left', padx=6)
+        ttk.Label(pad, text="(used when you zoom out past the photo)",
+                  foreground='gray').pack(side='left')
+
         self.ad_canvas = tk.Canvas(main_frame, width=620, height=430, bg='#2b2b2b',
                                    highlightthickness=1, highlightbackground='#999')
         self.ad_canvas.pack(pady=6)
@@ -2228,7 +2247,21 @@ class ProductAdminApp:
         self.ad_view_scale = 1.0    # preview px per source px
         self.ad_box = None          # [x, y, w, h] in preview coords
         self.ad_drag = None
+        self.ad_pad_color = "#000000"
+        self.ad_set_pad(self.ad_pad_color)
         self.ad_refresh_products()
+
+    def ad_set_pad(self, colour):
+        self.ad_pad_color = colour
+        if hasattr(self, 'ad_pad_swatch'):
+            self.ad_pad_swatch.configure(bg=colour)
+        self.ad_redraw()
+
+    def ad_pick_pad(self):
+        from tkinter import colorchooser
+        chosen = colorchooser.askcolor(color=self.ad_pad_color, title="Fill colour")
+        if chosen and chosen[1]:
+            self.ad_set_pad(chosen[1])
 
     def ad_refresh_products(self):
         items = []
@@ -2314,17 +2347,20 @@ class ProductAdminApp:
         ratio = tw / th
         x, y, w, h = self.ad_box
         cx, cy = x + w / 2, y + h / 2
-        w = max(40.0, min(w * factor, pw, ph * ratio))
+        w = max(40.0, min(w * factor, pw * 4, ph * ratio * 4))
         h = w / ratio
         self.ad_box = [cx - w / 2, cy - h / 2, w, h]
         self.ad_clamp()
         self.ad_redraw()
 
     def ad_clamp(self):
+        """The box may be larger than the photo (that's how padding happens),
+        so just make sure the two always overlap instead of forcing it inside."""
         pw, ph = self.ad_preview.size
         x, y, w, h = self.ad_box
-        x = max(0, min(x, pw - w))
-        y = max(0, min(y, ph - h))
+        margin = 20
+        x = max(margin - w, min(x, pw - margin))
+        y = max(margin - h, min(y, ph - margin))
         self.ad_box = [x, y, w, h]
 
     def ad_drag_start(self, event):
@@ -2354,8 +2390,18 @@ class ProductAdminApp:
         ox, oy = self._ad_offset()
         self.ad_canvas.create_image(ox, oy, anchor='nw', image=self.ad_tk)
         x, y, w, h = self.ad_box
-        # dim everything outside the crop so the framing is obvious
         pw, ph = self.ad_preview.size
+        # show the fill colour wherever the crop reaches past the photo,
+        # so the preview matches the file that gets saved
+        for px0, py0, px1, py1 in [
+                (x, y, x + w, min(y + h, 0)),                    # above
+                (x, max(y, ph), x + w, y + h),                   # below
+                (x, max(y, 0), min(x + w, 0), min(y + h, ph)),   # left
+                (max(x, pw), max(y, 0), x + w, min(y + h, ph))]: # right
+            if px1 > px0 and py1 > py0:
+                self.ad_canvas.create_rectangle(ox + px0, oy + py0, ox + px1, oy + py1,
+                                                fill=self.ad_pad_color, outline='')
+        # dim everything outside the crop so the framing is obvious
         for rect in [(ox, oy, ox + pw, oy + y),
                      (ox, oy + y + h, ox + pw, oy + ph),
                      (ox, oy + y, ox + x, oy + y + h),
@@ -2386,9 +2432,14 @@ class ProductAdminApp:
         x, y, w, h = self.ad_box
         s = self.ad_view_scale
         box = (int(x / s), int(y / s), int((x + w) / s), int((y + h) / s))
-        box = (max(0, box[0]), max(0, box[1]),
-               min(self.ad_source.width, box[2]), min(self.ad_source.height, box[3]))
-        crop = self.ad_source.crop(box).resize((tw, th), PILImage.LANCZOS)
+        # The box can extend past the photo; fill whatever it doesn't cover.
+        bw, bh = max(1, box[2] - box[0]), max(1, box[3] - box[1])
+        canvas = PILImage.new('RGB', (bw, bh), self.ad_pad_color)
+        sx0, sy0 = max(0, box[0]), max(0, box[1])
+        sx1, sy1 = min(self.ad_source.width, box[2]), min(self.ad_source.height, box[3])
+        if sx1 > sx0 and sy1 > sy0:
+            canvas.paste(self.ad_source.crop((sx0, sy0, sx1, sy1)), (sx0 - box[0], sy0 - box[1]))
+        crop = canvas.resize((tw, th), PILImage.LANCZOS)
         os.makedirs(AD_OUTPUT_DIR, exist_ok=True)
         base = f"{product.get('itemId', product['id'])}-{self.filename_safe(product['name'])}-{suffix}.jpg"
         out = os.path.join(AD_OUTPUT_DIR, base)
