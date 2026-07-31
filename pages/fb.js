@@ -5,6 +5,7 @@ import products from "../data/products.json";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
+import YouTubeEmbed from "../components/YouTubeEmbed";
 import { effectivePrice } from "../lib/pricing";
 import { SORT_OPTIONS, filterProducts, sortProducts } from "../lib/search";
 
@@ -12,6 +13,11 @@ import { SORT_OPTIONS, filterProducts, sortProducts } from "../lib/search";
 // looked at too — so this page leaves that group out, exactly as the
 // catalogue feed does. The rest of the site still shows it normally.
 const EXCLUDED_GROUPS = ["Knives & Tools"];
+
+// The "start to finish" clip, if it's still in the list.
+const MAKING_OF =
+  (products.youtubeVideos || []).find((v) => /start to finish/i.test(v.title || "")) ||
+  (products.youtubeVideos || [])[0];
 
 export default function FacebookLanding() {
   const [query, setQuery] = useState("");
@@ -62,6 +68,19 @@ export default function FacebookLanding() {
               {promoted.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
+            </div>
+          </section>
+        )}
+
+        {MAKING_OF && (
+          <section style={videoSectionStyle}>
+            <h2 style={{ ...h2Style, textAlign: "center" }}>How Each Piece Is Made</h2>
+            <p style={videoIntroStyle}>
+              Engraved, cut, and colored one at a time — the color is the titanium
+              itself reacting, not paint.
+            </p>
+            <div style={{ maxWidth: "680px", margin: "0 auto" }}>
+              <YouTubeEmbed id={MAKING_OF.id} title={MAKING_OF.title} />
             </div>
           </section>
         )}
@@ -133,6 +152,20 @@ const introStyle = {
   margin: "0 auto 1.5rem",
   lineHeight: 1.6,
 };
+const videoSectionStyle = {
+  margin: "0 0 2.5rem",
+  padding: "1.75rem 0",
+  borderTop: "1px solid #e5e7eb",
+  borderBottom: "1px solid #e5e7eb",
+};
+
+const videoIntroStyle = {
+  color: "#4b5563",
+  textAlign: "center",
+  maxWidth: "560px",
+  margin: "0 auto 1.25rem",
+};
+
 const gridStyle = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",

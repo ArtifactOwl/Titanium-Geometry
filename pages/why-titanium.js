@@ -4,6 +4,7 @@ import Head from "next/head";
 import products from "../data/products.json";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import YouTubeEmbed from "../components/YouTubeEmbed";
 
 export default function WhyTitanium() {
   const videos = products.youtubeVideos || [];
@@ -210,15 +211,11 @@ export default function WhyTitanium() {
             <div style={videoGrid}>
               {videos.map((video, index) => (
                 <div key={video.id || index} style={videoContainer}>
-                  <iframe
-                    style={videoStyle}
-                    src={`https://www.youtube.com/embed/${video.id}`}
+                  <YouTubeEmbed
+                    id={video.id}
                     title={video.title || `Video ${index + 1}`}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
+                    caption={video.title}
                   />
-                  {video.title && <p style={videoCaption}>{video.title}</p>}
                 </div>
               ))}
             </div>
@@ -427,17 +424,7 @@ const videoContainer = {
   textAlign: "center",
 };
 
-const videoStyle = {
-  width: "100%",
-  aspectRatio: "16/9",
-  borderRadius: "8px",
-};
 
-const videoCaption = {
-  marginTop: "0.5rem",
-  color: "#6b7280",
-  fontSize: "0.9rem",
-};
 
 const ctaStyle = {
   background: "#f9fafb",

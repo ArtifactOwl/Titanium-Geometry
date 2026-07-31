@@ -8,6 +8,7 @@ import { useCart } from "../../lib/cart";
 import { COUNTRIES, PAYPAL_EMAIL, priceInfo, round2, shippingFor } from "../../lib/pricing";
 import { trackAddToCart, trackViewContent } from "../../lib/fbpixel";
 import Footer from "../../components/Footer";
+import YouTubeEmbed from "../../components/YouTubeEmbed";
 
 export default function ProductPage() {
   const router = useRouter();
@@ -112,14 +113,7 @@ export default function ProductPage() {
             {/* YouTube video if exists */}
             {product.youtubeId && (
               <div style={youtubeContainerStyle}>
-                <iframe
-                  style={youtubeStyle}
-                  src={`https://www.youtube.com/embed/${product.youtubeId}`}
-                  title={`${product.name} video`}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+                <YouTubeEmbed id={product.youtubeId} title={`${product.name} video`} />
               </div>
             )}
           </div>
@@ -491,11 +485,6 @@ const youtubeContainerStyle = {
   marginTop: "1rem",
 };
 
-const youtubeStyle = {
-  width: "100%",
-  aspectRatio: "16/9",
-  borderRadius: "8px",
-};
 
 const infoStyle = {
   display: "flex",
