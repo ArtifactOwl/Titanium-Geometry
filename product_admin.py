@@ -75,6 +75,7 @@ AD_OUTPUT_DIR = os.path.join(PROJECT_PATH, "ad-images")
 PUBLISH_PATHS = [
     "data/products.json",
     "data/coupons.json",
+    "data/auto-promos.json",
     "data/flag-sales.json",
     "data/admin_settings.json",
     "public/pendants",
@@ -2614,7 +2615,8 @@ class ProductAdminApp:
         products = sum(1 for _, p in changes if p.endswith("products.json"))
         images = sum(1 for _, p in changes if p.lower().endswith((".jpg", ".jpeg", ".png", ".webp")))
         settings = sum(1 for _, p in changes
-                       if p.endswith(("coupons.json", "flag-sales.json", "admin_settings.json")))
+                       if p.endswith(("coupons.json", "auto-promos.json", "flag-sales.json",
+                                      "admin_settings.json")))
         bits = []
         if products: bits.append("product changes")
         if images: bits.append(f"{images} image{'s' if images != 1 else ''}")

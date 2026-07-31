@@ -9,6 +9,7 @@ import { parseCartQuery } from "../lib/cartLink";
 import { trackInitiateCheckout } from "../lib/fbpixel";
 import Footer from "../components/Footer";
 import {
+  AUTO_PROMOS,
   COUNTRIES,
   PAYPAL_EMAIL,
   SITE_URL,
@@ -17,6 +18,7 @@ import {
   findCoupon,
   money,
   priceInfo,
+  promoUnlocked,
 } from "../lib/pricing";
 
 const CONTACT_EMAIL = "titaniumgeometry@gmail.com";
@@ -176,6 +178,39 @@ export default function CartPage() {
               </select>
               <p style={shipNoteStyle}>Flat shipping — any number of pieces.</p>
 
+              {/* Automatic offers. Applied without a code; never stacked. */}
+              {AUTO_PROMOS.length > 0 && (
+                <div style={promoBoxStyle}>
+                  <div style={promoTitleStyle}>Automatic offers</div>
+                  {AUTO_PROMOS.map((p) => {
+                    const unlocked = promoUnlocked(p, totals.subtotal);
+                    const applied = totals.appliedPromo && totals.appliedPromo.id === p.id;
+                    return (
+                      <div
+                        key={p.id}
+                        style={{ ...promoRowStyle, color: unlocked ? "#065f46" : "#6b7280" }}
+                      >
+                        <span aria-hidden="true">{unlocked ? "✓" : "○"}</span>
+                        <span>
+                          {p.description}
+                          {applied && <strong> — applied</strong>}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {totals.nextUp && (
+                    <p style={promoNudgeStyle}>
+                      Add {money(totals.nextUp.remaining)} more to get{" "}
+                      {totals.nextUp.promo.label.toLowerCase()}.
+                    </p>
+                  )}
+                  <p style={promoFineStyle}>
+                    One offer per order — you automatically get whichever saves you more.
+                    Not combinable with a coupon code.
+                  </p>
+                </div>
+              )}
+
               {/* Coupon */}
               <form onSubmit={applyCode} style={{ margin: "1rem 0" }}>
                 <label style={labelStyle}>Coupon code:</label>
@@ -192,9 +227,19 @@ export default function CartPage() {
                 </div>
                 {codeMissing && <p style={errorTextStyle}>That code wasn&apos;t recognised.</p>}
                 {coupon && !totals.couponValid && <p style={errorTextStyle}>{totals.couponReason}</p>}
-                {coupon && totals.couponValid && (
+                {totals.couponApplied && coupon && (
                   <p style={okTextStyle}>
                     {coupon.code} applied{coupon.description ? ` — ${coupon.description}` : ""}.{" "}
+                    <button type="button" onClick={clearCode} style={linkBtnStyle}>
+                      remove
+                    </button>
+                  </p>
+                )}
+                {totals.couponOutdone && coupon && (
+                  <p style={noteTextStyle}>
+                    {coupon.code} is valid, but the automatic offer above saves you at least as
+                    much — and only one offer applies per order, so you&apos;re getting the better
+                    one.{" "}
                     <button type="button" onClick={clearCode} style={linkBtnStyle}>
                       remove
                     </button>
@@ -208,13 +253,28 @@ export default function CartPage() {
               </div>
               {totals.discount > 0 && (
                 <div style={totalRowStyle}>
-                  <span>Discount</span>
+                  <span>
+                    {totals.appliedPromo
+                      ? totals.appliedPromo.label
+                      : `Coupon ${coupon ? coupon.code : ""}`}
+                  </span>
                   <span style={{ color: "#dc2626" }}>−{money(totals.discount)}</span>
                 </div>
               )}
               <div style={totalRowStyle}>
                 <span>Shipping</span>
-                <span>{totals.shipping === 0 ? "Free" : money(totals.shipping)}</span>
+                <span>
+                  {totals.shippingWaived && totals.baseShipping > 0 ? (
+                    <>
+                      <span style={wasStyle}>{money(totals.baseShipping)}</span>{" "}
+                      <span style={{ color: "#047857", fontWeight: 600 }}>Free</span>
+                    </>
+                  ) : totals.shipping === 0 ? (
+                    "Free"
+                  ) : (
+                    money(totals.shipping)
+                  )}
+                </span>
               </div>
               <div style={grandTotalStyle}>
                 <span>Total</span>
@@ -222,7 +282,7 @@ export default function CartPage() {
               </div>
 
               {items.length > 0 && (
-                <PayPalCartForm items={items} totals={totals} coupon={totals.couponValid ? coupon : null} />
+                <PayPalCartForm items={items} totals={totals} coupon={totals.couponApplied ? coupon : null} />
               )}
               <p style={secureNoteStyle}>🔒 Secure checkout via PayPal.</p>
               <p style={secureNoteStyle}>
@@ -280,7 +340,14 @@ function PayPalCartForm({ items, totals, coupon }) {
       {totals.discount > 0 && (
         <input type="hidden" name="discount_amount_cart" value={totals.discount.toFixed(2)} />
       )}
-      {coupon && <input type="hidden" name="custom" value={`coupon:${coupon.code}`} />}
+      {/* Recorded on the PayPal notification so the order can be reconciled. */}
+      {(coupon || totals.appliedPromo) && (
+        <input
+          type="hidden"
+          name="custom"
+          value={coupon ? `coupon:${coupon.code}` : `promo:${totals.appliedPromo.id}`}
+        />
+      )}
 
       <input type="hidden" name="no_shipping" value="2" />
       <input type="hidden" name="return" value={`${SITE_URL}/success`} />
@@ -362,7 +429,36 @@ const applyBtnStyle = {
   cursor: "pointer",
   fontWeight: 600,
 };
+const promoBoxStyle = {
+  background: "#f0fdf4",
+  border: "1px solid #bbf7d0",
+  borderRadius: 6,
+  padding: "0.7rem 0.8rem",
+  margin: "0.75rem 0 0",
+};
+const promoTitleStyle = {
+  fontWeight: 700,
+  fontSize: "0.85rem",
+  marginBottom: "0.4rem",
+  color: "#065f46",
+};
+const promoRowStyle = {
+  display: "flex",
+  gap: "0.45rem",
+  alignItems: "flex-start",
+  fontSize: "0.85rem",
+  lineHeight: 1.4,
+  padding: "0.12rem 0",
+};
+const promoNudgeStyle = {
+  margin: "0.5rem 0 0",
+  fontSize: "0.85rem",
+  fontWeight: 600,
+  color: "#065f46",
+};
+const promoFineStyle = { margin: "0.45rem 0 0", fontSize: "0.75rem", color: "#6b7280", lineHeight: 1.4 };
 const errorTextStyle = { color: "#b91c1c", fontSize: "0.85rem", margin: "0.5rem 0 0" };
+const noteTextStyle = { color: "#374151", fontSize: "0.85rem", margin: "0.5rem 0 0", lineHeight: 1.45 };
 const okTextStyle = { color: "#047857", fontSize: "0.85rem", margin: "0.5rem 0 0" };
 const linkBtnStyle = {
   background: "none",

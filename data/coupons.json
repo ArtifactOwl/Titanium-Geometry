@@ -19,6 +19,17 @@
       "group": "Geometric Pendants",
       "active": false,
       "expires": null
+    },
+    {
+      "code": "SACREDGEO",
+      "description": "10% off your order",
+      "type": "percent",
+      "value": 10,
+      "minSubtotal": 0,
+      "group": null,
+      "active": true,
+      "hidden": true,
+      "expires": null
     }
   ]
 }

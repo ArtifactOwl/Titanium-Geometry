@@ -1,0 +1,22 @@
+{
+  "_comment": "Order-level offers applied automatically at checkout. They are never combined with each other or with a coupon code — the cart applies whichever single offer saves the buyer the most.",
+  "autoPromos": [
+    {
+      "id": "freeship160",
+      "kind": "freeShipping",
+      "threshold": 160,
+      "label": "Free worldwide shipping",
+      "description": "Orders over $160 ship free anywhere in the world",
+      "active": true
+    },
+    {
+      "id": "tenoff200",
+      "kind": "percent",
+      "value": 10,
+      "threshold": 200,
+      "label": "10% off your order",
+      "description": "Orders over $200 get 10% off",
+      "active": true
+    }
+  ]
+}
