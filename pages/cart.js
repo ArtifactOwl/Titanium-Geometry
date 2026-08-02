@@ -284,6 +284,7 @@ export default function CartPage() {
               {items.length > 0 && (
                 <PayPalCartForm items={items} totals={totals} coupon={totals.couponApplied ? coupon : null} />
               )}
+              {items.length > 0 && <SaveCart items={items} />}
               <p style={secureNoteStyle}>🔒 Secure checkout via PayPal.</p>
               <p style={secureNoteStyle}>
                 <Link href="/returns" style={{ color: "#2563eb" }}>
@@ -300,6 +301,83 @@ export default function CartPage() {
       </main>
 
       <Footer />
+    </div>
+  );
+}
+
+/**
+ * Ways to keep a cart beyond this browser.
+ *
+ * The cart itself lives in localStorage, which is per-device and which Safari
+ * clears after about a week of not visiting. Both buttons below hand the buyer
+ * a plain /cart?add=… link — the same format our quote links use — so they can
+ * reopen the exact cart anywhere, on any device, whenever they like.
+ */
+function SaveCart({ items }) {
+  const [copied, setCopied] = useState(false);
+
+  const url = useMemo(
+    () => `${SITE_URL}/cart?add=${items.map((p) => p.itemId || p.id).join(",")}`,
+    [items]
+  );
+
+  const mailto = useMemo(() => {
+    const lines = items.map(
+      (p) => `  • ${p.name}${p.itemId ? ` (#${p.itemId})` : ""} — ${money(effectivePrice(p))}`
+    );
+    const body = [
+      "Here's the cart I put together at Titanium Geometry:",
+      "",
+      ...lines,
+      "",
+      "Open it again any time — this link fills the cart back in:",
+      url,
+      "",
+      "Every piece is one of a kind, so it's first come, first served.",
+    ].join("\n");
+    return `mailto:?subject=${encodeURIComponent(
+      "My Titanium Geometry cart"
+    )}&body=${encodeURIComponent(body)}`;
+  }, [items, url]);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Older browsers, or a page not served over https.
+      const field = document.createElement("textarea");
+      field.value = url;
+      field.style.position = "fixed";
+      field.style.opacity = "0";
+      document.body.appendChild(field);
+      field.select();
+      try {
+        document.execCommand("copy");
+      } catch {
+        /* nothing else to try — the buyer can still use the email button */
+      }
+      document.body.removeChild(field);
+    }
+    setCopied(true);
+  };
+
+  // Any change to the cart invalidates the copied link, so drop the confirmation.
+  useEffect(() => setCopied(false), [url]);
+
+  return (
+    <div style={saveBoxStyle}>
+      <div style={saveTitleStyle}>Not ready yet?</div>
+      <p style={saveNoteStyle}>
+        Save your cart so you can pick it up later, or on another device.
+      </p>
+      <div style={saveActionsStyle}>
+        <button type="button" onClick={copyLink} style={saveBtnStyle}>
+          {copied ? "✓ Link copied" : "🔗 Copy cart link"}
+        </button>
+        <a href={mailto} style={saveBtnStyle}>
+          ✉️ Email it to me
+        </a>
+      </div>
     </div>
   );
 }
@@ -489,6 +567,28 @@ const checkoutBtnStyle = {
   border: "none",
   borderRadius: 6,
   cursor: "pointer",
+};
+const saveBoxStyle = {
+  marginTop: "1rem",
+  paddingTop: "1rem",
+  borderTop: "1px solid #e5e7eb",
+};
+const saveTitleStyle = { fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.2rem" };
+const saveNoteStyle = { fontSize: "0.8rem", color: "#6b7280", margin: "0 0 0.6rem", lineHeight: 1.4 };
+const saveActionsStyle = { display: "flex", gap: "0.5rem", flexWrap: "wrap" };
+const saveBtnStyle = {
+  flex: "1 1 130px",
+  padding: "0.55rem 0.6rem",
+  border: "1px solid #d1d5db",
+  borderRadius: 6,
+  background: "#fff",
+  color: "#374151",
+  fontSize: "0.82rem",
+  fontWeight: 500,
+  cursor: "pointer",
+  textAlign: "center",
+  textDecoration: "none",
+  whiteSpace: "nowrap",
 };
 const secureNoteStyle = { fontSize: "0.8rem", color: "#6b7280", textAlign: "center", margin: "0.5rem 0 0" };
 const emptyStyle = { textAlign: "center", padding: "3rem 1rem", color: "#374151" };
