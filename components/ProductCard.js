@@ -22,7 +22,16 @@ export default function ProductCard({ product }) {
         )}
         <div style={imageContainerStyle}>
           {!imageError ? (
-            <img src={imageSrc} alt={product.name} style={imageStyle} onError={() => setImageError(true)} />
+            // Lazy: a full shop grid is 80+ cards, and loading them all at once
+            // is what made these pages slow.
+            <img
+              src={imageSrc}
+              alt={product.name}
+              loading="lazy"
+              decoding="async"
+              style={imageStyle}
+              onError={() => setImageError(true)}
+            />
           ) : (
             <div style={placeholderStyle}>No Image</div>
           )}

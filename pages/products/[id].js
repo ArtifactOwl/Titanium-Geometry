@@ -85,10 +85,11 @@ export default function ProductPage() {
           {/* Image Gallery */}
           <div style={galleryStyle}>
             <div style={mainImageContainerStyle}>
-              <ImageWithFallback 
-                src={images[mainImage]} 
+              <ImageWithFallback
+                src={images[mainImage]}
                 alt={product.name}
                 style={mainImageStyle}
+                eager
               />
             </div>
             
@@ -289,16 +290,22 @@ const addToCartStyle = {
   cursor: "pointer",
 };
 
-// Helper component for images with fallback
-function ImageWithFallback({ src, alt, style, onClick }) {
+// Helper component for images with fallback.
+// Lazy by default — the gallery probes up to 20 files per folder, and there is
+// no reason to pull them all before the buyer clicks a thumbnail. The main
+// image passes eager, since it's the thing they came to see.
+function ImageWithFallback({ src, alt, style, onClick, eager = false }) {
   const [error, setError] = useState(false);
-  
+
   if (error) return null;
-  
+
   return (
-    <img 
-      src={src} 
-      alt={alt} 
+    <img
+      src={src}
+      alt={alt}
+      loading={eager ? "eager" : "lazy"}
+      decoding="async"
+      fetchpriority={eager ? "high" : undefined}
       style={style}
       onClick={onClick}
       onError={() => setError(true)}

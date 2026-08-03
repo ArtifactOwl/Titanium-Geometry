@@ -105,6 +105,9 @@ export default function WhyTitanium() {
             <div style={imageColumnStyle}>
               <img 
                 src="/why-titanium/cleaning.jpg" 
+                loading="lazy"
+                decoding="async"
+                
                 alt="Titanium cleaning" 
                 style={sectionImageStyle}
                 onError={(e) => e.target.style.display = 'none'}
@@ -122,12 +125,18 @@ export default function WhyTitanium() {
           <div style={imageRowStyle}>
             <img 
               src="/why-titanium/pendant.jpg" 
+                loading="lazy"
+                decoding="async"
+                
               alt="Pendant option" 
               style={optionImageStyle}
               onError={(e) => e.target.style.display = 'none'}
             />
             <img 
               src="/why-titanium/keychain.jpg" 
+                loading="lazy"
+                decoding="async"
+                
               alt="Keychain option" 
               style={optionImageStyle}
               onError={(e) => e.target.style.display = 'none'}
@@ -152,6 +161,9 @@ export default function WhyTitanium() {
               </p>
               <img 
                 src="/why-titanium/process-design.jpg" 
+                loading="lazy"
+                decoding="async"
+                
                 alt="Digital design process" 
                 style={stepImageStyle}
                 onError={(e) => e.target.style.display = 'none'}
@@ -167,6 +179,9 @@ export default function WhyTitanium() {
               </p>
               <img 
                 src="/why-titanium/process-engrave.jpg" 
+                loading="lazy"
+                decoding="async"
+                
                 alt="Laser engraving process" 
                 style={stepImageStyle}
                 onError={(e) => e.target.style.display = 'none'}
@@ -182,6 +197,9 @@ export default function WhyTitanium() {
               </p>
               <img 
                 src="/why-titanium/process-color.jpg" 
+                loading="lazy"
+                decoding="async"
+                
                 alt="Color creation process" 
                 style={stepImageStyle}
                 onError={(e) => e.target.style.display = 'none'}

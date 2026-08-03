@@ -107,6 +107,8 @@ export default function Home() {
                     <img 
                       src={imgSrc} 
                       alt={group} 
+                      loading="lazy"
+                      decoding="async"
                       style={cardImageStyle}
                       onError={(e) => e.target.style.display = 'none'}
                     />
@@ -140,13 +142,13 @@ export default function Home() {
           <h2 style={h2Style}>Sample Designs</h2>
           <div style={sampleImagesStyle}>
             <Link href="/shop?group=Geometric%20Pendants">
-              <img src="/orbitals.jpg" alt="Geometric pendants" style={sampleImageStyle} />
+              <img src="/orbitals.jpg" alt="Geometric pendants" loading="lazy" decoding="async" style={sampleImageStyle} />
             </Link>
             <Link href="/shop">
-              <img src="/selection.jpg" alt="View all products" style={sampleImageStyle} />
+              <img src="/selection.jpg" alt="View all products" loading="lazy" decoding="async" style={sampleImageStyle} />
             </Link>
             <Link href="/shop?group=Molecules">
-              <img src="/dmtmolecule.jpg" alt="Molecule pendants" style={sampleImageStyle} />
+              <img src="/dmtmolecule.jpg" alt="Molecule pendants" loading="lazy" decoding="async" style={sampleImageStyle} />
             </Link>
           </div>
         </section>

@@ -166,7 +166,7 @@ function PreviousWorkCard({ item, showForm, onToggleForm }) {
 function ImageWithFallback({ src, alt, style }) {
   const [error, setError] = useState(false);
   if (error) return null;
-  return <img src={src} alt={alt} style={style} onError={() => setError(true)} />;
+  return <img src={src} alt={alt} loading="lazy" decoding="async" style={style} onError={() => setError(true)} />;
 }
 
 function VideoWithFallback({ src, style }) {

@@ -108,7 +108,7 @@ export default function CartPage() {
             <div>
               {items.map((p) => (
                 <div key={p.id} style={rowStyle}>
-                  <img src={`/pendants/${p.folder}/1.jpg`} alt={p.name} style={thumbStyle} />
+                  <img src={`/pendants/${p.folder}/1.jpg`} alt={p.name} loading="lazy" decoding="async" style={thumbStyle} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <Link href={`/products/${p.id}`} style={itemNameStyle}>
                       {p.name}
