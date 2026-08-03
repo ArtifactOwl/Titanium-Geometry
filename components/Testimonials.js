@@ -102,6 +102,9 @@ const quoteStyle = {
   color: "#374151",
   lineHeight: 1.6,
   fontSize: "0.95rem",
+  // Keep the line breaks people actually wrote — it reads more like a person
+  // and less like marketing copy.
+  whiteSpace: "pre-line",
 };
 
 const attribStyle = { fontSize: "0.85rem", color: "#6b7280" };
