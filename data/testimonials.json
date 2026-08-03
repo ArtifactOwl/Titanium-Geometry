@@ -7,8 +7,8 @@
       "name": "Rhonda M.",
       "piece": "5MeO-DMT",
       "photo": "/testimonials/rhondam.jpg",
-      "w": 1151,
-      "h": 2048
+      "w": 787,
+      "h": 1400
     },
     {
       "id": "niki-l",
@@ -19,13 +19,21 @@
       "id": "jacob-m",
       "quote": "Love it!\nA solid titanium reminder to think in the fractal language of the universe and not get stuck in only linear 3D perceptions",
       "name": "Jacob M.",
-      "piece": "Fractal Brain"
+      "piece": "Fractal Brain",
+      "photo": "/testimonials/jacobm.jpg",
+      "w": 1536,
+      "h": 2048
     },
     {
       "id": "taylor-g",
       "quote": "Knife received! Damn, crazy how much detail on something so tiny. I love it man, thank you!",
       "name": "Taylor G.",
       "group": "Knives & Tools"
+    },
+    {
+      "id": "courtney-r",
+      "quote": "Thank you so much! I LOVE EM!",
+      "name": "Courtney R."
     }
   ]
 }

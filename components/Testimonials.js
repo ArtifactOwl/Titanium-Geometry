@@ -11,6 +11,23 @@ import testimonialData from "../data/testimonials.json";
 export const TESTIMONIALS = testimonialData.testimonials || [];
 
 /**
+ * Which photo to show, if any.
+ *
+ * A customer photo can show more than the quote mentions — a shot of three
+ * pieces together might include a knife. `photoShowsGroups` records that, so
+ * on a page excluding a category the cropped `photoSafe` version is used
+ * instead. With no cropped version the photo is dropped and the quote stays:
+ * better a quote without a picture than a knife on a page that bans them.
+ */
+function photoFor(t, excludeGroups) {
+  if (!t.photo) return null;
+  const conflicts = (t.photoShowsGroups || []).some((g) => excludeGroups.includes(g));
+  if (!conflicts) return { src: t.photo, w: t.w, h: t.h };
+  if (t.photoSafe) return { src: t.photoSafe, w: t.safeW, h: t.safeH };
+  return null;
+}
+
+/**
  * A quote may name a category it's about (`group`). That matters in two places:
  * a knife quote must stay off the Facebook landing page, which leaves that
  * category out for Meta's weapons policy, and a product page should lead with
@@ -39,21 +56,23 @@ export default function Testimonials({
     <section style={compact ? compactSectionStyle : sectionStyle}>
       {title && <h2 style={compact ? compactTitleStyle : titleStyle}>{title}</h2>}
       <div style={compact ? compactGridStyle : gridStyle}>
-        {shown.map((t, i) => (
+        {shown.map((t, i) => {
+          // A customer's own photo of the piece being worn does what a product
+          // shot can't. Shown at its own shape rather than cropped to a square:
+          // these are usually phone portraits with the subject high and the
+          // pendant near the bottom, and a centre crop cuts the pendant out.
+          // w/h come from the file so the browser reserves the right space
+          // instead of shifting the page as it loads.
+          const photo = photoFor(t, excludeGroups);
+          return (
           <figure key={t.id || i} style={cardStyle}>
-            {/* A customer's own photo of the piece being worn does what a
-                product shot can't. Shown at its own shape rather than cropped
-                to a square: these are usually phone portraits with the face
-                high and the pendant near the bottom, and a centre crop cuts
-                the pendant straight out. w/h come from the file so the browser
-                reserves the right space instead of shifting the page. */}
-            {t.photo && (
+            {photo && (
               <img
-                src={t.photo}
+                src={photo.src}
                 alt={`Customer photo${t.piece ? ` — ${t.piece}` : ""}`}
                 loading="lazy"
-                width={t.w || undefined}
-                height={t.h || undefined}
+                width={photo.w || undefined}
+                height={photo.h || undefined}
                 style={compact ? compactPhotoStyle : photoStyle}
               />
             )}
@@ -64,7 +83,8 @@ export default function Testimonials({
               {t.piece && <div style={pieceStyle}>on {t.piece}</div>}
             </figcaption>
           </figure>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
