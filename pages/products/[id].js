@@ -81,7 +81,7 @@ export default function ProductPage() {
           <span>{product.name}</span>
         </nav>
 
-        <div style={productLayoutStyle}>
+        <div className="product-layout" style={productLayoutStyle}>
           {/* Image Gallery */}
           <div style={galleryStyle}>
             <div style={mainImageContainerStyle}>
@@ -437,6 +437,9 @@ const breadcrumbLinkStyle = {
   textDecoration: "none",
 };
 
+// Two columns on a desktop. The className matters: inline styles can't carry a
+// media query, so the collapse to a single column below 768px lives with the
+// global styles in _app.js and overrides the value below.
 const productLayoutStyle = {
   display: "grid",
   gridTemplateColumns: "1fr 1fr",
