@@ -25,16 +25,19 @@ export default function Testimonials({
         {shown.map((t, i) => (
           <figure key={t.id || i} style={cardStyle}>
             {/* A customer's own photo of the piece being worn does what a
-                product shot can't. Square-cropped so mixed phone photos still
-                line up, and lazy-loaded so they don't slow the first paint. */}
+                product shot can't. Shown at its own shape rather than cropped
+                to a square: these are usually phone portraits with the face
+                high and the pendant near the bottom, and a centre crop cuts
+                the pendant straight out. w/h come from the file so the browser
+                reserves the right space instead of shifting the page. */}
             {t.photo && (
               <img
                 src={t.photo}
                 alt={`Customer photo${t.piece ? ` — ${t.piece}` : ""}`}
                 loading="lazy"
-                width={600}
-                height={600}
-                style={photoStyle}
+                width={t.w || undefined}
+                height={t.h || undefined}
+                style={compact ? compactPhotoStyle : photoStyle}
               />
             )}
             <blockquote style={quoteStyle}>“{t.quote}”</blockquote>
@@ -61,9 +64,12 @@ const compactSectionStyle = { margin: "1.5rem 0 0" };
 const titleStyle = { fontSize: "1.4rem", marginBottom: "1.25rem", textAlign: "center" };
 const compactTitleStyle = { fontSize: "1.05rem", marginBottom: "0.75rem" };
 
+// Capped rather than 1fr: with a single quote, stretching a portrait photo
+// across the full width fills the screen with somebody's face.
 const gridStyle = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 320px))",
+  justifyContent: "center",
   gap: "1.25rem",
   maxWidth: "1000px",
   margin: "0 auto",
@@ -81,13 +87,15 @@ const cardStyle = {
 const photoStyle = {
   width: "100%",
   height: "auto",
-  aspectRatio: "1 / 1",
-  objectFit: "cover",
   borderRadius: 6,
   display: "block",
   marginBottom: "0.9rem",
   background: "#f3f4f6",
 };
+
+// Beside a product the card is full width, so cap the photo or a tall portrait
+// takes over the page.
+const compactPhotoStyle = { ...photoStyle, maxWidth: 220 };
 
 const quoteStyle = {
   margin: "0 0 0.75rem",
