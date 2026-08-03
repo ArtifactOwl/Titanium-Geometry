@@ -1,4 +1,4 @@
 {
-  "_comment": "Real customer quotes only. 'name' is what gets shown - a first name plus last initial is plenty. 'location' and 'piece' are optional but both make a quote read as genuine, so include them when you have them. Get the customer's OK before publishing anything they sent you privately.",
+  "_comment": "Real customer quotes only. 'name' is what gets shown - a first name plus last initial is plenty. 'location', 'piece' and 'photo' are all optional, but each one makes a quote read as genuine, so include them when you have them. 'photo' is a customer's own picture, saved under public/testimonials/ and written here as /testimonials/<file>.jpg - resize to about 800px before saving. Get the customer's OK before publishing anything they sent you privately, and always ask separately before publishing a photo of a person.",
   "testimonials": []
 }

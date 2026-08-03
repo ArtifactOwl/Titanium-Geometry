@@ -24,6 +24,19 @@ export default function Testimonials({
       <div style={compact ? compactGridStyle : gridStyle}>
         {shown.map((t, i) => (
           <figure key={t.id || i} style={cardStyle}>
+            {/* A customer's own photo of the piece being worn does what a
+                product shot can't. Square-cropped so mixed phone photos still
+                line up, and lazy-loaded so they don't slow the first paint. */}
+            {t.photo && (
+              <img
+                src={t.photo}
+                alt={`Customer photo${t.piece ? ` — ${t.piece}` : ""}`}
+                loading="lazy"
+                width={600}
+                height={600}
+                style={photoStyle}
+              />
+            )}
             <blockquote style={quoteStyle}>“{t.quote}”</blockquote>
             <figcaption style={attribStyle}>
               <span style={nameStyle}>{t.name}</span>
@@ -63,6 +76,17 @@ const cardStyle = {
   borderRadius: 8,
   padding: "1.1rem 1.2rem",
   margin: 0,
+};
+
+const photoStyle = {
+  width: "100%",
+  height: "auto",
+  aspectRatio: "1 / 1",
+  objectFit: "cover",
+  borderRadius: 6,
+  display: "block",
+  marginBottom: "0.9rem",
+  background: "#f3f4f6",
 };
 
 const quoteStyle = {
