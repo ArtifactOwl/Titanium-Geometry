@@ -10,6 +10,7 @@ import { trackAddToCart, trackViewContent } from "../../lib/fbpixel";
 import Footer from "../../components/Footer";
 import YouTubeEmbed from "../../components/YouTubeEmbed";
 import Testimonials from "../../components/Testimonials";
+import { displaySrc, fullSrc, thumbSrc } from "../../lib/images";
 
 export default function ProductPage() {
   const router = useRouter();
@@ -20,6 +21,9 @@ export default function ProductPage() {
   const [videos, setVideos] = useState([]);
   const [selectedCountry, setSelectedCountry] = useState("US");
   const [mainImage, setMainImage] = useState(0);
+  // Which image number is open full size, or null. The full-resolution file is
+  // only ever requested here — pages otherwise use the smaller derivatives.
+  const [zoomed, setZoomed] = useState(null);
   
   useEffect(() => {
     if (id) {
@@ -36,7 +40,7 @@ export default function ProductPage() {
         const MAX_IMAGES = 20;
         const possibleImages = [];
         for (let i = 1; i <= MAX_IMAGES; i++) {
-          possibleImages.push(`/pendants/${found.folder}/${i}.jpg`);
+          possibleImages.push(i);
         }
         setImages(possibleImages);
         
@@ -86,19 +90,23 @@ export default function ProductPage() {
           <div style={galleryStyle}>
             <div style={mainImageContainerStyle}>
               <ImageWithFallback
-                src={images[mainImage]}
+                src={displaySrc(product.folder, images[mainImage])}
                 alt={product.name}
-                style={mainImageStyle}
+                style={{ ...mainImageStyle, cursor: "zoom-in" }}
+                onClick={() => setZoomed(images[mainImage])}
                 eager
               />
             </div>
-            
+            <button type="button" onClick={() => setZoomed(images[mainImage])} style={zoomHintStyle}>
+              🔍 Click the photo to see the engraving full size
+            </button>
+
             {/* Thumbnails */}
             <div style={thumbnailsStyle}>
-              {images.map((img, idx) => (
+              {images.map((n, idx) => (
                 <ImageWithFallback
-                  key={idx}
-                  src={img}
+                  key={n}
+                  src={thumbSrc(product.folder, n)}
                   alt={`${product.name} ${idx + 1}`}
                   style={{
                     ...thumbnailStyle,
@@ -244,7 +252,54 @@ export default function ProductPage() {
         </div>
       </main>
 
+      {zoomed !== null && (
+        <Lightbox
+          folder={product.folder}
+          n={zoomed}
+          name={product.name}
+          onClose={() => setZoomed(null)}
+        />
+      )}
+
       <Footer />
+    </div>
+  );
+}
+
+/**
+ * Full-resolution view. This is the only place the original file is fetched, so
+ * a buyer who wants to inspect the engraving gets every pixel of it, while
+ * ordinary browsing stays on the small derivatives.
+ */
+function Lightbox({ folder, n, name, onClose }) {
+  const [loaded, setLoaded] = useState(false);
+
+  // Escape closes it, and the page behind mustn't scroll while it's open.
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [onClose]);
+
+  return (
+    <div style={lightboxStyle} onClick={onClose} role="dialog" aria-modal="true" aria-label={`${name} full size`}>
+      {!loaded && <div style={lightboxLoadingStyle}>Loading full resolution…</div>}
+      <img
+        src={fullSrc(folder, n)}
+        alt={`${name} at full resolution`}
+        onLoad={() => setLoaded(true)}
+        onClick={(e) => e.stopPropagation()}
+        style={{ ...lightboxImageStyle, opacity: loaded ? 1 : 0 }}
+      />
+      <button type="button" onClick={onClose} style={lightboxCloseStyle} aria-label="Close">
+        ✕
+      </button>
+      <p style={lightboxHintStyle}>Pinch or scroll to zoom · tap outside to close</p>
     </div>
   );
 }
@@ -471,6 +526,73 @@ const mainImageStyle = {
   width: "100%",
   height: "100%",
   objectFit: "contain",
+};
+
+const zoomHintStyle = {
+  display: "block",
+  width: "100%",
+  margin: "0.5rem 0 0.75rem",
+  padding: "0.4rem",
+  background: "none",
+  border: "none",
+  color: "#2563eb",
+  fontSize: "0.85rem",
+  cursor: "zoom-in",
+  textAlign: "center",
+};
+
+const lightboxStyle = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 1000,
+  background: "rgba(17,24,39,0.94)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "1rem",
+  // Let a phone pan around the full-size image rather than trapping it.
+  overflow: "auto",
+  cursor: "zoom-out",
+};
+
+const lightboxImageStyle = {
+  maxWidth: "100%",
+  maxHeight: "100%",
+  objectFit: "contain",
+  transition: "opacity 0.2s",
+  cursor: "default",
+};
+
+const lightboxLoadingStyle = {
+  position: "absolute",
+  color: "#e5e7eb",
+  fontSize: "0.95rem",
+};
+
+const lightboxCloseStyle = {
+  position: "fixed",
+  top: "1rem",
+  right: "1rem",
+  width: 44,
+  height: 44,
+  borderRadius: "999px",
+  border: "none",
+  background: "rgba(255,255,255,0.15)",
+  color: "#fff",
+  fontSize: "1.2rem",
+  cursor: "pointer",
+};
+
+const lightboxHintStyle = {
+  position: "fixed",
+  bottom: "0.75rem",
+  left: 0,
+  right: 0,
+  textAlign: "center",
+  color: "#9ca3af",
+  fontSize: "0.8rem",
+  margin: 0,
+  pointerEvents: "none",
 };
 
 const thumbnailsStyle = {

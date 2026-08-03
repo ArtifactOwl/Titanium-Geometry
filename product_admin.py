@@ -80,8 +80,13 @@ PUBLISH_PATHS = [
     "data/flag-sales.json",
     "data/admin_settings.json",
     "public/pendants",
+    # The small copies the site actually loads. Rebuild with make_images.py
+    # after adding photos, or the new ones fall back to the full-size original.
+    "public/img",
+    "public/thumb",
     "public/previous-work",
     "public/categories",
+    "public/testimonials",
 ]
 CHECK_ON = "☑"
 CHECK_OFF = "☐"

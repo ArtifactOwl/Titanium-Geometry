@@ -4,10 +4,11 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { priceInfo } from "../lib/pricing";
+import { thumbSrc, fallbackToFull } from "../lib/images";
 
 export default function ProductCard({ product }) {
   const [imageError, setImageError] = useState(false);
-  const imageSrc = `/pendants/${product.folder}/1.jpg`;
+  const imageSrc = thumbSrc(product.folder);
   const isPending = product.status === "pending";
   const isSold = product.status === "sold";
   const pricing = priceInfo(product);
@@ -30,7 +31,7 @@ export default function ProductCard({ product }) {
               loading="lazy"
               decoding="async"
               style={imageStyle}
-              onError={() => setImageError(true)}
+              onError={fallbackToFull(product.folder)}
             />
           ) : (
             <div style={placeholderStyle}>No Image</div>
