@@ -246,7 +246,7 @@ export default function ProductPage() {
                 <li>Each piece is one of a kind</li>
               </ul>
 
-              <Testimonials title="What Buyers Say" limit={2} compact />
+              <Testimonials title="What Buyers Say" limit={2} compact group={product.group} />
             </div>
           </div>
         </div>

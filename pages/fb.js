@@ -74,8 +74,9 @@ export default function FacebookLanding() {
         )}
 
         {/* Straight after the pieces, where a first-time visitor decides
-            whether this shop is real. Renders nothing until there are quotes. */}
-        <Testimonials limit={3} />
+            whether this shop is real. Renders nothing until there are quotes.
+            Same exclusion as the grid: no quote that names a knife. */}
+        <Testimonials limit={3} excludeGroups={EXCLUDED_GROUPS} />
 
         {MAKING_OF && (
           <section style={videoSectionStyle}>

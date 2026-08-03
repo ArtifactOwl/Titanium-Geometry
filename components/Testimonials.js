@@ -10,12 +10,29 @@ import testimonialData from "../data/testimonials.json";
 
 export const TESTIMONIALS = testimonialData.testimonials || [];
 
+/**
+ * A quote may name a category it's about (`group`). That matters in two places:
+ * a knife quote must stay off the Facebook landing page, which leaves that
+ * category out for Meta's weapons policy, and a product page should lead with
+ * quotes about its own category when it has them.
+ */
 export default function Testimonials({
   title = "What Buyers Say",
   limit,
   compact = false,
+  group,
+  excludeGroups = [],
 }) {
-  const shown = limit ? TESTIMONIALS.slice(0, limit) : TESTIMONIALS;
+  const allowed = TESTIMONIALS.filter(
+    (t) => !t.group || !excludeGroups.includes(t.group)
+  );
+  const matching = group ? allowed.filter((t) => t.group === group) : [];
+  const general = allowed.filter((t) => !t.group);
+  // Category-specific quotes first, then ones that fit anywhere. Quotes about
+  // some *other* category are left out — they'd only be confusing.
+  const ordered = [...matching, ...general];
+
+  const shown = limit ? ordered.slice(0, limit) : ordered;
   if (shown.length === 0) return null;
 
   return (
