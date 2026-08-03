@@ -9,6 +9,7 @@ import { COUNTRIES, PAYPAL_EMAIL, priceInfo, round2, shippingFor } from "../../l
 import { trackAddToCart, trackViewContent } from "../../lib/fbpixel";
 import Footer from "../../components/Footer";
 import YouTubeEmbed from "../../components/YouTubeEmbed";
+import Testimonials from "../../components/Testimonials";
 
 export default function ProductPage() {
   const router = useRouter();
@@ -235,6 +236,8 @@ export default function ProductPage() {
                 <li>Extremely durable and scratch resistant</li>
                 <li>Each piece is one of a kind</li>
               </ul>
+
+              <Testimonials title="What Buyers Say" limit={2} compact />
             </div>
           </div>
         </div>

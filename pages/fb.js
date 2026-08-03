@@ -6,6 +6,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
 import YouTubeEmbed from "../components/YouTubeEmbed";
+import Testimonials from "../components/Testimonials";
 import { effectivePrice } from "../lib/pricing";
 import { SORT_OPTIONS, filterProducts, sortProducts } from "../lib/search";
 
@@ -71,6 +72,10 @@ export default function FacebookLanding() {
             </div>
           </section>
         )}
+
+        {/* Straight after the pieces, where a first-time visitor decides
+            whether this shop is real. Renders nothing until there are quotes. */}
+        <Testimonials limit={3} />
 
         {MAKING_OF && (
           <section style={videoSectionStyle}>

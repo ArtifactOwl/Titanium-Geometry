@@ -76,6 +76,7 @@ PUBLISH_PATHS = [
     "data/products.json",
     "data/coupons.json",
     "data/auto-promos.json",
+    "data/testimonials.json",
     "data/flag-sales.json",
     "data/admin_settings.json",
     "public/pendants",
