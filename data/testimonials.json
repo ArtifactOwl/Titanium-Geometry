@@ -11,11 +11,6 @@
       "h": 1400
     },
     {
-      "id": "niki-l",
-      "quote": "Holy crap, these are so intricate, so detailed, I didn't realize how amazing they would be!!!",
-      "name": "Niki L."
-    },
-    {
       "id": "jacob-m",
       "quote": "Love it!\nA solid titanium reminder to think in the fractal language of the universe and not get stuck in only linear 3D perceptions",
       "name": "Jacob M.",
@@ -25,15 +20,21 @@
       "h": 2048
     },
     {
+      "id": "courtney-r",
+      "quote": "That is the most badass heart I've ever seen! Just look at that detail and color — fine work!\nThey came! Thank you so much — I LOVE EM!",
+      "name": "Courtney R.",
+      "piece": "Fractal Heart"
+    },
+    {
+      "id": "niki-l",
+      "quote": "Holy crap, these are so intricate, so detailed, I didn't realize how amazing they would be!!!",
+      "name": "Niki L."
+    },
+    {
       "id": "taylor-g",
       "quote": "Knife received! Damn, crazy how much detail on something so tiny. I love it man, thank you!",
       "name": "Taylor G.",
       "group": "Knives & Tools"
-    },
-    {
-      "id": "courtney-r",
-      "quote": "Thank you so much! I LOVE EM!",
-      "name": "Courtney R."
     }
   ]
 }
