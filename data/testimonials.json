@@ -2,6 +2,21 @@
   "_comment": "Real customer quotes only. 'name' is what gets shown - a first name plus last initial is plenty. 'location', 'piece' and 'photo' are all optional, but each one makes a quote read as genuine, so include them when you have them. 'photo' is a customer's own picture, saved under public/testimonials/ and written here as /testimonials/<file>.jpg - resize to about 800px before saving. Get the customer's OK before publishing anything they sent you privately, and always ask separately before publishing a photo of a person.",
   "testimonials": [
     {
+      "id": "courtney-r",
+      "quote": "That is the most badass heart I've ever seen! Just look at that detail and color — fine work!\nThey came! Thank you so much — I LOVE EM!",
+      "name": "Courtney R.",
+      "piece": "Fractal Heart",
+      "photo": "/testimonials/courtneym.jpg",
+      "w": 900,
+      "h": 1200,
+      "photoSafe": "/testimonials/courtneym-safe.jpg",
+      "safeW": 1200,
+      "safeH": 1039,
+      "photoShowsGroups": [
+        "Knives & Tools"
+      ]
+    },
+    {
       "id": "rhonda-m",
       "quote": "Love it !!",
       "name": "Rhonda M.",
@@ -18,12 +33,6 @@
       "photo": "/testimonials/jacobm.jpg",
       "w": 1536,
       "h": 2048
-    },
-    {
-      "id": "courtney-r",
-      "quote": "That is the most badass heart I've ever seen! Just look at that detail and color — fine work!\nThey came! Thank you so much — I LOVE EM!",
-      "name": "Courtney R.",
-      "piece": "Fractal Heart"
     },
     {
       "id": "niki-l",
