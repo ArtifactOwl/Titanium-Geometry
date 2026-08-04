@@ -1,9 +1,9 @@
 // Shared body for the Facebook ad landing pages (/fb, /fb2, /fb3).
 //
 // Each page leads with its own set of pieces — the ones its ad showed — then
-// the other sets, the customer quotes, that set's video, and finally the whole
-// shop. Leading with the matching set is the point: someone arriving from an
-// ad should see what they clicked on before anything else.
+// the customer quotes, that set's video, and finally the whole shop. Leading
+// with only the matching set is the point: someone arriving from an ad should
+// recognise what they clicked before being asked to choose anything.
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
@@ -16,7 +16,7 @@ import YouTubeEmbed from "./YouTubeEmbed";
 import Testimonials from "./Testimonials";
 import { effectivePrice } from "../lib/pricing";
 import { SORT_OPTIONS, filterProducts, sortProducts } from "../lib/search";
-import { AD_SETS, adSetById } from "../lib/adSets";
+import { adSetById } from "../lib/adSets";
 
 // Meta's commerce policy prohibits weapons, and an ad's landing page gets
 // looked at too — so these pages leave that group out, exactly as the
@@ -34,23 +34,17 @@ export default function AdLanding({ setId }) {
 
   const set = adSetById(setId);
 
-  const { own, others, rest } = useMemo(() => {
+  // Only this page's own set is called out. The other sets' pieces are still
+  // on the page — they just sit in the shop grid below with everything else.
+  // Leading with just what the ad showed keeps the match tight; putting three
+  // sets up front turns recognition into a choice.
+  const { own, rest } = useMemo(() => {
     const eligible = products.products.filter(
       (p) => !EXCLUDED_GROUPS.includes(p.group) && (p.status === "available" || !p.status)
     );
     const own = set ? eligible.filter((p) => p[set.flag]) : [];
-
-    // A piece can sit in more than one set; only ever show it once.
-    const seen = new Set(own.map((p) => p.id));
-    const others = [];
-    for (const other of AD_SETS) {
-      if (!set || other.id === set.id) continue;
-      const items = eligible.filter((p) => p[other.flag] && !seen.has(p.id));
-      items.forEach((p) => seen.add(p.id));
-      if (items.length) others.push({ set: other, items });
-    }
-
-    return { own, others, rest: eligible.filter((p) => !seen.has(p.id)) };
+    const shown = new Set(own.map((p) => p.id));
+    return { own, rest: eligible.filter((p) => !shown.has(p.id)) };
   }, [set]);
 
   const shown = useMemo(
@@ -94,18 +88,6 @@ export default function AdLanding({ setId }) {
             </div>
           </section>
         )}
-
-        {/* The other sets. A set with nothing ticked never renders. */}
-        {others.map(({ set: other, items }) => (
-          <section key={other.id} style={{ marginBottom: "2.5rem" }}>
-            <h2 style={h2Style}>{other.heading || "More Featured Pieces"}</h2>
-            <div style={gridStyle}>
-              {items.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
-          </section>
-        ))}
 
         <Testimonials limit={3} excludeGroups={EXCLUDED_GROUPS} />
 

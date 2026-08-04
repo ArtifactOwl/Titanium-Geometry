@@ -12,6 +12,27 @@ import YouTubeEmbed from "../../components/YouTubeEmbed";
 import Testimonials from "../../components/Testimonials";
 import { displaySrc, fullSrc, thumbSrc } from "../../lib/images";
 
+// The bullet list under Details, used unless a product overrides it. Knives and
+// tools need their own — the weight and the "never crack or peel" line are
+// written for pendants and aren't true of everything.
+export const DEFAULT_DETAILS = [
+  "Individually laser engraved, colored, and cut",
+  "Lightweight titanium (approximately 8 grams)",
+  "Anodized color - will never crack or peel",
+  "Extremely durable and scratch resistant",
+  "Each piece is one of a kind",
+];
+
+/** A product's own bullets when it has them, otherwise the standard list. */
+export function detailsFor(product) {
+  const custom = product && product.details;
+  if (Array.isArray(custom)) {
+    const lines = custom.map((s) => String(s).trim()).filter(Boolean);
+    if (lines.length) return lines;
+  }
+  return DEFAULT_DETAILS;
+}
+
 export default function ProductPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -91,6 +112,7 @@ export default function ProductPage() {
             <div style={mainImageContainerStyle}>
               <ImageWithFallback
                 src={displaySrc(product.folder, images[mainImage])}
+                fallback={fullSrc(product.folder, images[mainImage])}
                 alt={product.name}
                 style={{ ...mainImageStyle, cursor: "zoom-in" }}
                 onClick={() => setZoomed(images[mainImage])}
@@ -107,6 +129,7 @@ export default function ProductPage() {
                 <ImageWithFallback
                   key={n}
                   src={thumbSrc(product.folder, n)}
+                  fallback={fullSrc(product.folder, n)}
                   alt={`${product.name} ${idx + 1}`}
                   style={{
                     ...thumbnailStyle,
@@ -239,11 +262,9 @@ export default function ProductPage() {
                     <strong>Size:</strong> {String(product.size).trim()}
                   </li>
                 )}
-                <li>Individually laser engraved, colored, and cut</li>
-                <li>Lightweight titanium (approximately 8 grams)</li>
-                <li>Anodized color - will never crack or peel</li>
-                <li>Extremely durable and scratch resistant</li>
-                <li>Each piece is one of a kind</li>
+                {detailsFor(product).map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
               </ul>
 
               <Testimonials title="What Buyers Say" limit={2} compact group={product.group} />
@@ -349,21 +370,34 @@ const addToCartStyle = {
 // Lazy by default — the gallery probes up to 20 files per folder, and there is
 // no reason to pull them all before the buyer clicks a thumbnail. The main
 // image passes eager, since it's the thing they came to see.
-function ImageWithFallback({ src, alt, style, onClick, eager = false }) {
-  const [error, setError] = useState(false);
+function ImageWithFallback({ src, alt, style, onClick, eager = false, fallback }) {
+  const [current, setCurrent] = useState(src);
+  const [failed, setFailed] = useState(false);
 
-  if (error) return null;
+  // The gallery walks through image numbers, so the source changes in place.
+  useEffect(() => {
+    setCurrent(src);
+    setFailed(false);
+  }, [src]);
+
+  if (failed) return null;
 
   return (
     <img
-      src={src}
+      src={current}
       alt={alt}
       loading={eager ? "eager" : "lazy"}
       decoding="async"
       fetchpriority={eager ? "high" : undefined}
       style={style}
       onClick={onClick}
-      onError={() => setError(true)}
+      onError={() => {
+        // A piece photographed since the last `python make_images.py` has no
+        // resized copy yet. Show the full-size original rather than nothing —
+        // heavier, but a missing photo costs a sale.
+        if (fallback && current !== fallback) setCurrent(fallback);
+        else setFailed(true);
+      }}
     />
   );
 }

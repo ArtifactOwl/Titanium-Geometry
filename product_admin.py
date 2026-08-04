@@ -89,6 +89,15 @@ PUBLISH_PATHS = [
     "public/categories",
     "public/testimonials",
 ]
+# Mirrors DEFAULT_DETAILS in pages/products/[id].js — the bullet list shown
+# under Details unless a product carries its own "details" array.
+DEFAULT_DETAILS = [
+    "Individually laser engraved, colored, and cut",
+    "Lightweight titanium (approximately 8 grams)",
+    "Anodized color - will never crack or peel",
+    "Extremely durable and scratch resistant",
+    "Each piece is one of a kind",
+]
 CHECK_ON = "☑"
 CHECK_OFF = "☐"
 PREVIEW_MAX = 240          # widest the Manage tab's preview image is drawn
@@ -886,7 +895,7 @@ class ProductAdminApp:
         for row, btns in enumerate([
             [("Mark Sold", self.mark_sold), ("Mark Pending", self.mark_pending), ("Mark Available", self.mark_available), ("Delete", self.delete_product)],
             [("Edit Price", self.edit_price), ("Edit Description", self.edit_description), ("Change Group", self.change_group), ("Open Images Folder", self.open_product_folder)],
-            [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous), ("Edit Flags", self.edit_flags), ("Edit Keywords", self.edit_keywords), ("Edit Size", self.edit_size)]
+            [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous), ("Edit Flags", self.edit_flags), ("Edit Keywords", self.edit_keywords), ("Edit Size", self.edit_size), ("Edit Details", self.edit_details)]
         ]):
             btn_frame = ttk.Frame(main_frame)
             btn_frame.pack(fill='x', pady=3)
@@ -1465,6 +1474,62 @@ class ProductAdminApp:
         ttk.Button(btn_frame, text="Append Standard Text", command=append_std).pack(side='left')
         ttk.Button(btn_frame, text="Save", command=save).pack(side='right')
     
+    def edit_details(self):
+        """The bullet list under Details on the product page. Products use the
+        standard list unless they carry their own — knives need a different
+        weight, and 'will never crack or peel' isn't true of a blade."""
+        pid = self.get_selected_product()
+        if not pid: return
+        product = next((p for p in self.data['products'] if p['id'] == pid), None)
+        if not product: return
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title(f"Edit Details - {product['name']}")
+        dialog.geometry("560x400")
+        dialog.transient(self.root); dialog.grab_set()
+
+        frame = ttk.Frame(dialog, padding=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        using_custom = isinstance(product.get('details'), list) and product['details']
+        state_var = tk.StringVar()
+        ttk.Label(frame, textvariable=state_var, font=('Helvetica', 10, 'bold')).pack(anchor='w')
+        ttk.Label(frame, foreground='gray', justify='left',
+                  text="One bullet per line. The Size field is added above these "
+                       "automatically, so don't repeat it here.").pack(anchor='w', pady=(2, 8))
+
+        text = scrolledtext.ScrolledText(frame, width=60, height=10)
+        text.pack(fill=tk.BOTH, expand=True)
+
+        def load(lines, custom):
+            text.delete("1.0", tk.END)
+            text.insert("1.0", "\n".join(lines))
+            state_var.set("Using its own details" if custom else "Using the standard details")
+
+        load(product['details'] if using_custom else DEFAULT_DETAILS, using_custom)
+
+        btn_frame = ttk.Frame(frame)
+        btn_frame.pack(fill='x', pady=(10, 0))
+
+        def reset():
+            load(DEFAULT_DETAILS, False)
+
+        def save():
+            lines = [ln.strip() for ln in text.get("1.0", tk.END).splitlines() if ln.strip()]
+            if not lines or lines == list(DEFAULT_DETAILS):
+                # Matching the standard list means there's nothing to override —
+                # drop the key so products.json stays clean.
+                product.pop('details', None)
+                message = "Back to the standard details."
+            else:
+                product['details'] = lines
+                message = f"Saved {len(lines)} custom detail line(s)."
+            self.save_data(); self.refresh_product_list(); dialog.destroy()
+            messagebox.showinfo("Done", message)
+
+        ttk.Button(btn_frame, text="Reset to Standard", command=reset).pack(side='left')
+        ttk.Button(btn_frame, text="Save", command=save).pack(side='right')
+
     def change_group(self):
         pid = self.get_selected_product()
         if not pid: return
