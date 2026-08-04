@@ -90,6 +90,7 @@ PUBLISH_PATHS = [
 ]
 CHECK_ON = "☑"
 CHECK_OFF = "☐"
+PREVIEW_MAX = 240          # widest the Manage tab's preview image is drawn
 
 
 class ProductAdminApp:
@@ -778,7 +779,17 @@ class ProductAdminApp:
         filter_combo = ttk.Combobox(filter_frame, textvariable=self.filter_var, width=20, values=["All", "Available", "Sold", "Pending"])
         filter_combo.pack(side='left', padx=10)
         filter_combo.bind('<<ComboboxSelected>>', lambda e: self.refresh_product_list())
-        ttk.Button(filter_frame, text="Refresh", command=self.refresh_product_list).pack(side='left')
+
+        ttk.Label(filter_frame, text="Search:").pack(side='left', padx=(12, 0))
+        self.search_var = tk.StringVar()
+        ttk.Entry(filter_frame, textvariable=self.search_var, width=26).pack(side='left', padx=5)
+        # Filter as you type. No reload — re-reading the file on every keystroke
+        # would be wasteful, and nothing on disk has changed.
+        self.search_var.trace_add('write', lambda *_: self.refresh_product_list(reload=False))
+        ttk.Button(filter_frame, text="Clear", width=6,
+                   command=lambda: self.search_var.set("")).pack(side='left')
+
+        ttk.Button(filter_frame, text="Refresh", command=self.refresh_product_list).pack(side='left', padx=(8, 0))
         ttk.Button(filter_frame, text="Update All Item IDs", command=self.update_all_item_ids).pack(side='right')
         ttk.Button(filter_frame, text="Export Images for AI", command=self.export_images_for_ai).pack(side='right', padx=(0, 10))
         ttk.Button(filter_frame, text="Fix Image Names", command=self.fix_image_names).pack(side='right', padx=(0, 10))
@@ -801,11 +812,24 @@ class ProductAdminApp:
         self.product_tree.heading('fbFeatured', text='FB Ad')
         self.product_tree.column('fbFeatured', width=60, anchor='center', stretch=False)
         self.product_tree.bind('<Button-1>', self.on_product_tree_click)
-        
+        self.product_tree.bind('<<TreeviewSelect>>', self.on_product_selected)
+
+        # Photo of whatever is selected, so it's obvious which piece a row is
+        # before marking it sold or changing its price.
+        preview_frame = ttk.LabelFrame(list_frame, text="Preview", padding=8)
+        preview_frame.pack(side='right', fill='y', padx=(10, 0))
+        self.preview_photo = None          # keep a reference or tkinter drops it
+        self.preview_label = ttk.Label(preview_frame, anchor='center',
+                                       text="Select a product", width=34)
+        self.preview_label.pack(expand=True)
+        self.preview_caption = tk.StringVar(value="")
+        ttk.Label(preview_frame, textvariable=self.preview_caption, wraplength=PREVIEW_MAX,
+                  justify='center', foreground='gray').pack(pady=(8, 0))
+
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.product_tree.yview)
         self.product_tree.configure(yscrollcommand=scrollbar.set)
-        self.product_tree.pack(side='left', fill=tk.BOTH, expand=True)
         scrollbar.pack(side='right', fill='y')
+        self.product_tree.pack(side='left', fill=tk.BOTH, expand=True)
 
         hint_frame = ttk.Frame(main_frame)
         hint_frame.pack(fill='x')
@@ -1080,20 +1104,42 @@ class ProductAdminApp:
         else:
             messagebox.showinfo("Done", "All products already have item IDs")
     
-    def refresh_product_list(self):
+    def product_matches_search(self, product, terms):
+        """Every word typed has to appear somewhere in the product. Searching
+        covers the item number, name, group, keywords and description, so
+        'M0001', 'molecule' and 'purple' all find the same piece."""
+        if not terms:
+            return True
+        haystack = " ".join([
+            str(product.get('itemId', '')),
+            product.get('name', ''),
+            product.get('id', ''),
+            product.get('group', ''),
+            product.get('description', ''),
+            product.get('size', '') or '',
+            " ".join(product.get('keywords') or []),
+        ]).lower()
+        return all(term in haystack for term in terms)
+
+    def refresh_product_list(self, reload=True):
         # Rebuilding the tree drops the selection, which is jarring right after
         # editing a product — remember it and put it back.
         previous = self.product_tree.selection()
         for item in self.product_tree.get_children():
             self.product_tree.delete(item)
-        self.data = self.load_data()
-        
+        if reload:
+            self.data = self.load_data()
+
         filter_val = self.filter_var.get()
         products = self.data['products']
         if filter_val == "Available": products = [p for p in products if p.get('status', 'available') == 'available']
         elif filter_val == "Sold": products = [p for p in products if p.get('status') == 'sold']
         elif filter_val == "Pending": products = [p for p in products if p.get('status') == 'pending']
-        
+
+        terms = self.search_var.get().lower().split()
+        if terms:
+            products = [p for p in products if self.product_matches_search(p, terms)]
+
         for product in products:
             status = product.get('status', 'available').upper()
             has_video = "✓" if product.get('youtubeId') else ""
@@ -1115,6 +1161,69 @@ class ProductAdminApp:
         still_there = [pid for pid in previous if self.product_tree.exists(pid)]
         if still_there:
             self.product_tree.selection_set(still_there)
+        else:
+            self.show_preview(None)
+
+        shown, total = len(products), len(self.data['products'])
+        self.manage_status_var.set(
+            f"Showing {shown} of {total}" if shown != total else ""
+        )
+
+    # ---------- Preview ----------
+    def on_product_selected(self, event=None):
+        selection = self.product_tree.selection()
+        self.show_preview(selection[0] if selection else None, extra=len(selection) - 1)
+
+    def product_images(self, product):
+        """Image files in a product's folder, in the order the site numbers them."""
+        folder = os.path.join(PROJECT_PATH, 'public', 'pendants', product.get('folder', ''))
+        if not os.path.isdir(folder):
+            return folder, []
+        names = [f for f in os.listdir(folder) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        # '2.jpg' must sort before '10.jpg', which plain text sorting gets wrong.
+        def order(name):
+            stem = os.path.splitext(name)[0]
+            return (0, int(stem), '') if stem.isdigit() else (1, 0, stem.lower())
+        return folder, sorted(names, key=order)
+
+    def show_preview(self, product_id, extra=0):
+        self.preview_photo = None
+        if not product_id:
+            self.preview_label.config(image='', text="Select a product")
+            self.preview_caption.set("")
+            return
+
+        product = next((p for p in self.data['products'] if p['id'] == product_id), None)
+        if not product:
+            self.preview_label.config(image='', text="Select a product")
+            self.preview_caption.set("")
+            return
+
+        folder, images = self.product_images(product)
+        caption = f"{product.get('itemId', '-')} · {product['name']}"
+        if extra > 0:
+            caption += f"\n(+{extra} more selected)"
+        caption += f"\n{len(images)} image(s)" if images else "\nNo images in folder"
+        self.preview_caption.set(caption)
+
+        if not images:
+            self.preview_label.config(image='', text="(no image)")
+            return
+
+        try:
+            from PIL import Image as PILImage, ImageOps, ImageTk
+        except ImportError:
+            self.preview_label.config(
+                image='', text="Install Pillow to see\nphotos here:\npip install Pillow")
+            return
+
+        try:
+            img = ImageOps.exif_transpose(PILImage.open(os.path.join(folder, images[0])))
+            img.thumbnail((PREVIEW_MAX, PREVIEW_MAX), PILImage.LANCZOS)
+            self.preview_photo = ImageTk.PhotoImage(img)
+            self.preview_label.config(image=self.preview_photo, text='')
+        except Exception as exc:
+            self.preview_label.config(image='', text=f"Couldn't open image\n{exc}")
 
     def get_selected_product(self):
         selection = self.product_tree.selection()
