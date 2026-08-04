@@ -77,6 +77,7 @@ PUBLISH_PATHS = [
     "data/coupons.json",
     "data/auto-promos.json",
     "data/testimonials.json",
+    "data/ad-sets.json",
     "data/flag-sales.json",
     "data/admin_settings.json",
     "public/pendants",
@@ -91,6 +92,9 @@ PUBLISH_PATHS = [
 CHECK_ON = "☑"
 CHECK_OFF = "☐"
 PREVIEW_MAX = 240          # widest the Manage tab's preview image is drawn
+# One Facebook ad landing page per set: /fb, /fb2, /fb3. Kept in step with
+# data/ad-sets.json, which the pages read.
+AD_SETS_FILE = os.path.join(PROJECT_PATH, "data", "ad-sets.json")
 
 
 class ProductAdminApp:
@@ -178,6 +182,44 @@ class ProductAdminApp:
         with open(SETTINGS_FILE, 'w') as f:
             json.dump(self.settings, f, indent=2)
     
+    # ---------- Facebook ad sets ----------
+    # Three landing pages, /fb /fb2 /fb3, each leading with its own pieces and
+    # its own video. Running one ad per set means a piece selling only takes
+    # down that ad; the other two keep going.
+    DEFAULT_AD_SETS = [
+        {"id": "fb",  "path": "/fb",  "flag": "fbFeatured",  "label": "FB Ad 1",
+         "heading": "More Featured Pieces", "youtubeId": ""},
+        {"id": "fb2", "path": "/fb2", "flag": "fbFeatured2", "label": "FB Ad 2",
+         "heading": "Also Available", "youtubeId": ""},
+        {"id": "fb3", "path": "/fb3", "flag": "fbFeatured3", "label": "FB Ad 3",
+         "heading": "More to See", "youtubeId": ""},
+    ]
+
+    def load_ad_sets(self):
+        if os.path.exists(AD_SETS_FILE):
+            try:
+                with open(AD_SETS_FILE, 'r', encoding='utf-8') as f:
+                    sets = json.load(f).get('adSets')
+                if sets:
+                    return sets
+            except Exception:
+                pass
+        return [dict(s) for s in self.DEFAULT_AD_SETS]
+
+    def save_ad_sets(self):
+        os.makedirs(os.path.dirname(AD_SETS_FILE), exist_ok=True)
+        with open(AD_SETS_FILE, 'w', encoding='utf-8') as f:
+            json.dump({"adSets": self.ad_sets_data}, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+
+    def ad_sets(self):
+        if not hasattr(self, 'ad_sets_data'):
+            self.ad_sets_data = self.load_ad_sets()
+        return self.ad_sets_data
+
+    def ad_set_flags(self):
+        return [s['flag'] for s in self.ad_sets()]
+
     def filename_safe(self, text, limit=40):
         """Product names contain slashes, commas and ampersands, none of which
         belong in a filename — turn one into a tidy hyphenated fragment."""
@@ -797,7 +839,7 @@ class ProductAdminApp:
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
-        columns = ('itemId', 'name', 'group', 'price', 'status', 'video') + tuple(FLAG_KEYS) + ('featured', 'fbFeatured')
+        columns = ('itemId', 'name', 'group', 'price', 'status', 'video') + tuple(FLAG_KEYS) + ('featured',) + tuple(self.ad_set_flags())
         self.product_tree = ttk.Treeview(list_frame, columns=columns, show='headings',
                                          height=10, selectmode='extended')
         for col, w in [('itemId', 70), ('name', 170), ('group', 105), ('price', 85), ('status', 65), ('video', 45)]:
@@ -809,8 +851,9 @@ class ProductAdminApp:
             self.product_tree.column(key, width=80, anchor='center', stretch=False)
         self.product_tree.heading('featured', text='Featured')
         self.product_tree.column('featured', width=70, anchor='center', stretch=False)
-        self.product_tree.heading('fbFeatured', text='FB Ad')
-        self.product_tree.column('fbFeatured', width=60, anchor='center', stretch=False)
+        for s in self.ad_sets():
+            self.product_tree.heading(s['flag'], text=s.get('label', s['flag']))
+            self.product_tree.column(s['flag'], width=62, anchor='center', stretch=False)
         self.product_tree.bind('<Button-1>', self.on_product_tree_click)
         self.product_tree.bind('<<TreeviewSelect>>', self.on_product_selected)
 
@@ -867,7 +910,7 @@ class ProductAdminApp:
         if not (0 <= col_index < len(columns)):
             return
         flag_key = columns[col_index]
-        if flag_key not in FLAG_KEYS and flag_key not in ('featured', 'fbFeatured'):
+        if flag_key not in FLAG_KEYS and flag_key not in ('featured',) + tuple(self.ad_set_flags()):
             return  # not a checkbox column — let the normal click through
 
         row = self.product_tree.identify_row(event.y)
@@ -876,7 +919,7 @@ class ProductAdminApp:
 
         selection = self.product_tree.selection()
         targets = selection if (row in selection and len(selection) > 1) else (row,)
-        if flag_key in ('featured', 'fbFeatured'):
+        if flag_key in ('featured',) + tuple(self.ad_set_flags()):
             self.toggle_featured_for(targets, row, key=flag_key)
         else:
             self.toggle_flag_for(targets, flag_key, row)
@@ -914,7 +957,7 @@ class ProductAdminApp:
         if still_there:
             self.product_tree.selection_set(still_there)
         total = sum(1 for p in self.data['products'] if p.get(key))
-        what = 'FB ad' if key == 'fbFeatured' else 'Featured'
+        what = next((s.get('label', key) for s in self.ad_sets() if s['flag'] == key), 'Featured')
         self.manage_status_var.set(
             f"{'Added to' if turn_on else 'Removed from'} {what}: {changed} product"
             f"{'s' if changed != 1 else ''} ({total} in total)")
@@ -1151,7 +1194,8 @@ class ProductAdminApp:
             flags = self.product_flags(product)
             flag_cells = tuple(CHECK_ON if k in flags else CHECK_OFF for k in FLAG_KEYS)
             flag_cells += (CHECK_ON if product.get('featured') else CHECK_OFF,)
-            flag_cells += (CHECK_ON if product.get('fbFeatured') else CHECK_OFF,)
+            flag_cells += tuple(CHECK_ON if product.get(f) else CHECK_OFF
+                                for f in self.ad_set_flags())
             self.product_tree.insert('', tk.END, iid=product['id'],
                                      values=(item_id, product['name'], product['group'],
                                              price_display, status, has_video) + flag_cells)
@@ -1984,6 +2028,35 @@ class ProductAdminApp:
         with_id = len([p for p in self.data['products'] if p.get('itemId')])
         self.stats_var.set(f"Products: {total} | With Item ID: {with_id} | Available: {avail} | Sold: {sold} | Pending: {pend} | On Sale: {sale} | Previous Work: {prev}")
 
+    def _ad_set_count_var(self, ad_set):
+        """How many pieces are currently in a set, so it's obvious at a glance
+        whether an ad has anything left to point at."""
+        var = tk.StringVar()
+        if not hasattr(self, 'ad_set_count_vars'):
+            self.ad_set_count_vars = {}
+        self.ad_set_count_vars[ad_set['id']] = var
+        self.refresh_ad_set_counts()
+        return var
+
+    def refresh_ad_set_counts(self):
+        for s in self.ad_sets():
+            var = getattr(self, 'ad_set_count_vars', {}).get(s['id'])
+            if var is None:
+                continue
+            live = sum(1 for p in self.data['products']
+                       if p.get(s['flag']) and p.get('status', 'available') == 'available')
+            total = sum(1 for p in self.data['products'] if p.get(s['flag']))
+            sold = total - live
+            var.set(f"{live} available" + (f" ({sold} sold)" if sold else ""))
+
+    def save_ad_set_videos(self):
+        for s in self.ad_sets():
+            raw = self.ad_video_vars[s['id']].get().strip()
+            s['youtubeId'] = self.extract_youtube_id(raw) if raw else ""
+        self.save_ad_sets()
+        messagebox.showinfo("Saved", "Landing page videos updated.\n\n"
+                                     "Hit Publish to put them online.")
+
     # ==================== VIDEOS TAB ====================
     def create_videos_tab(self):
         main_frame = ttk.Frame(self.videos_tab, padding="20")
@@ -2002,6 +2075,26 @@ class ProductAdminApp:
         ttk.Button(wt_btn, text="Add Video", command=self.add_wt_video).pack(side='left', padx=3)
         ttk.Button(wt_btn, text="Remove Selected", command=self.delete_wt_video).pack(side='left', padx=3)
         
+        # One video per ad landing page. Blank falls back to the making-of clip.
+        ad_frame = ttk.LabelFrame(main_frame, text="Facebook Ad Landing Page Videos", padding=10)
+        ad_frame.pack(fill='x', pady=10)
+        ttk.Label(ad_frame, foreground='gray',
+                  text="Each page plays its own video. Paste a YouTube link or ID; "
+                       "leave blank to use the 'start to finish' clip above.").grid(
+            row=0, column=0, columnspan=3, sticky='w', pady=(0, 6))
+        self.ad_video_vars = {}
+        for i, s in enumerate(self.ad_sets(), start=1):
+            ttk.Label(ad_frame, text=f"{s.get('label', s['id'])}  ({s['path']})").grid(
+                row=i, column=0, sticky='w', pady=2)
+            var = tk.StringVar(value=s.get('youtubeId', ''))
+            self.ad_video_vars[s['id']] = var
+            ttk.Entry(ad_frame, textvariable=var, width=46).grid(row=i, column=1, padx=8, pady=2)
+            ttk.Label(ad_frame, textvariable=self._ad_set_count_var(s), foreground='gray').grid(
+                row=i, column=2, sticky='w')
+        ttk.Button(ad_frame, text="Save Landing Page Videos",
+                   command=self.save_ad_set_videos).grid(row=len(self.ad_sets()) + 1, column=1,
+                                                         sticky='e', pady=(6, 0))
+
         pv_frame = ttk.LabelFrame(main_frame, text="Product Videos", padding=10)
         pv_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         

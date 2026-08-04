@@ -3,5 +3,5 @@
 import AdLanding from "../components/AdLanding";
 
 export default function Page() {
-  return <AdLanding setId="fb" />;
+  return <AdLanding setId="fb2" />;
 }

@@ -1,0 +1,29 @@
+{
+  "_comment": "Three Facebook ad landing pages, one per set of pieces. Tick a product's FB Ad 1/2/3 box in the admin tool's Manage Products tab to put it in a set; a piece can be in more than one. 'youtubeId' is the video that set's page plays - leave it empty to fall back to the Why Titanium making-of clip. 'heading' is what customers see above the other sets' rows. A set with nothing ticked simply doesn't appear.",
+  "adSets": [
+    {
+      "id": "fb",
+      "path": "/fb",
+      "flag": "fbFeatured",
+      "label": "FB Ad 1",
+      "heading": "More Featured Pieces",
+      "youtubeId": ""
+    },
+    {
+      "id": "fb2",
+      "path": "/fb2",
+      "flag": "fbFeatured2",
+      "label": "FB Ad 2",
+      "heading": "Also Available",
+      "youtubeId": ""
+    },
+    {
+      "id": "fb3",
+      "path": "/fb3",
+      "flag": "fbFeatured3",
+      "label": "FB Ad 3",
+      "heading": "More to See",
+      "youtubeId": ""
+    }
+  ]
+}
