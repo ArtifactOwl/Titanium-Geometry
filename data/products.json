@@ -42,7 +42,7 @@
       "price": 75.0,
       "group": "Geometric Pendants",
       "folder": "nautilus-white-gold-violet-red",
-      "status": "available",
+      "status": "sold",
       "created": "2026-01-10",
       "itemId": "G0002"
     },
@@ -86,7 +86,7 @@
       "price": 70.0,
       "group": "Geometric Pendants",
       "folder": "metatrons-cube-blue-gold",
-      "status": "available",
+      "status": "sold",
       "itemId": "G0006",
       "created": "2026-01-13"
     },
@@ -97,7 +97,7 @@
       "price": 80.0,
       "group": "Geometric Pendants",
       "folder": "metatrons-cube-large-purple-blue-gold-pink",
-      "status": "available",
+      "status": "sold",
       "itemId": "G0007",
       "created": "2026-01-14"
     },
