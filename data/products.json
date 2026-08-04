@@ -1232,6 +1232,30 @@
       "created": "2026-07-31",
       "size": "1.4\" or 3.5cm",
       "fbFeatured": true
+    },
+    {
+      "id": "nautilus-city",
+      "name": "Nautilus City",
+      "description": "Uses standard utility blades, engraved on one side.  Reverse includes custom engraved logo or message.\n\nSize: 4\" closed, 6.8\" open\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 130.0,
+      "group": "Knives & Tools",
+      "folder": "nautilus-city",
+      "status": "available",
+      "itemId": "X0002",
+      "created": "2026-08-04",
+      "size": "4\" closed, 6.8\" open"
+    },
+    {
+      "id": "sacred-geometry-folding-knife",
+      "name": "Sacred Geometry Folding Knife",
+      "description": "Damascus blade with lock, engraved on both sides",
+      "price": 115.0,
+      "group": "Knives & Tools",
+      "folder": "sacred-geometry-folding-knife",
+      "status": "available",
+      "itemId": "X0003",
+      "created": "2026-08-04",
+      "size": "3.2\" blade, 7\" open"
     }
   ],
   "previousWork": [
