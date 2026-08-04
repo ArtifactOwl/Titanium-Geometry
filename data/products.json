@@ -1236,14 +1236,21 @@
     {
       "id": "nautilus-city",
       "name": "Nautilus City",
-      "description": "Uses standard utility blades, engraved on one side.  Reverse includes custom engraved logo or message.\n\nSize: 4\" closed, 6.8\" open\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "description": "Uses standard utility blades, engraved on one side.  Reverse includes custom engraved logo or message.  5 extra blades included.\n\nSize: 4\" closed, 6.8\" open\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
       "price": 130.0,
       "group": "Knives & Tools",
       "folder": "nautilus-city",
       "status": "available",
       "itemId": "X0002",
       "created": "2026-08-04",
-      "size": "4\" closed, 6.8\" open"
+      "size": "4\" closed, 6.8\" open",
+      "details": [
+        "Individually laser engraved, colored, and cut",
+        "Lightweight titanium",
+        "Anodized color - will never crack or peel",
+        "Extremely durable and scratch resistant",
+        "Each piece is one of a kind"
+      ]
     },
     {
       "id": "sacred-geometry-folding-knife",
@@ -1255,7 +1262,46 @@
       "status": "available",
       "itemId": "X0003",
       "created": "2026-08-04",
-      "size": "3.2\" blade, 7\" open"
+      "size": "3.2\" blade, 7\" open",
+      "details": [
+        "Individually laser engraved, colored, and cut",
+        "Lightweight titanium",
+        "Anodized color - will never crack or peel",
+        "Extremely durable and scratch resistant",
+        "Each piece is one of a kind"
+      ]
+    },
+    {
+      "id": "growth-and-flourish",
+      "name": "Growth and Flourish",
+      "description": "Geometric radial growth culminates in flowering growth at the culmination\n\nIncludes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 100.0,
+      "group": "Geometric Pendants",
+      "folder": "growth-and-flourish",
+      "status": "available",
+      "itemId": "G0063",
+      "created": "2026-08-04",
+      "size": "1.5\" or 4cm",
+      "featured": true
+    },
+    {
+      "id": "spear-scalpel",
+      "name": "Spear Scalpel",
+      "description": "Inspiration for this solid titanium scalpel comes from geometric designs as well as the Predator spear.  The scalpel uses replaceable size 11 scalpel blades, of which 5 extra blades are included.\n\nSize:  7.5\" or 19cm",
+      "price": 110.0,
+      "group": "Knives & Tools",
+      "folder": "spear-scalpel",
+      "status": "available",
+      "itemId": "X0004",
+      "created": "2026-08-04",
+      "size": "7.5\" or 19cm",
+      "details": [
+        "Individually laser engraved, colored, and cut",
+        "Lightweight titanium",
+        "Anodized color - will never crack or peel",
+        "Extremely durable and scratch resistant",
+        "Each piece is one of a kind"
+      ]
     }
   ],
   "previousWork": [
