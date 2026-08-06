@@ -2,12 +2,12 @@
   "flagSales": {
     "sale1": {
       "type": "fixed",
-      "value": 15.0,
+      "value": 30.0,
       "active": true
     },
     "sale2": {
       "type": "fixed",
-      "value": 10.0,
+      "value": 20.0,
       "active": true
     },
     "sale3": {
