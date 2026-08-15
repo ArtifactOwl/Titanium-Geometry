@@ -3,7 +3,7 @@
 The site already publishes a product feed that Meta can read on a schedule:
 
 ```
-https://titanium-geometry.vercel.app/facebook-feed.csv
+https://titaniumgeometry.com/facebook-feed.csv
 ```
 
 It regenerates on every deploy, so the normal routine — mark something sold in
@@ -41,7 +41,7 @@ You need:
 3. Paste the URL:
 
    ```
-   https://titanium-geometry.vercel.app/facebook-feed.csv
+   https://titaniumgeometry.com/facebook-feed.csv
    ```
 
    No username or password — the file is public.

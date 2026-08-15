@@ -48,7 +48,7 @@ one-off coupon plus a pre-filled cart link:
 2. Send them a link that fills the cart and applies the code automatically:
 
    ```
-   https://titanium-geometry.vercel.app/cart?add=G0012,G0018,O0005&code=JANE75
+   https://titaniumgeometry.com/cart?add=G0012,G0018,O0005&code=JANE75
    ```
 
    `add=` takes item IDs (or product slugs), separated by commas.

@@ -8,7 +8,7 @@ fills the cart, and shows the normal PayPal checkout.
 ## The URL to give Meta
 
 ```
-https://titanium-geometry.vercel.app/cart?products={product_id}&coupon={coupon_code}
+https://titaniumgeometry.com/cart?products={product_id}&coupon={coupon_code}
 ```
 
 Two different things are going on in that URL, and it's worth being clear about
@@ -60,7 +60,7 @@ The product IDs Meta sends are the `id` column of the feed, which is the item ID
 Paste this in a browser — it should show two pieces and the code in the coupon box:
 
 ```
-https://titanium-geometry.vercel.app/cart?products=G0002:1,G0004:1&coupon=GEO10
+https://titaniumgeometry.com/cart?products=G0002:1,G0004:1&coupon=GEO10
 ```
 
 (`GEO10` ships inactive, so it will say the code isn't active — that's the coupon

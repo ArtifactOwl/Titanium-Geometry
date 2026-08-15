@@ -232,9 +232,9 @@ export default function ProductPage() {
                   <input type="hidden" name="amount" value={totalPrice} />
                   <input type="hidden" name="currency_code" value="USD" />
                   <input type="hidden" name="no_shipping" value="2" />
-                  <input type="hidden" name="return" value="https://titanium-geometry.vercel.app/success" />
-                  <input type="hidden" name="cancel_return" value="https://titanium-geometry.vercel.app/shop" />
-                  <input type="hidden" name="notify_url" value="https://titanium-geometry.vercel.app/api/paypal-webhook" />
+                  <input type="hidden" name="return" value="https://titaniumgeometry.com/success" />
+                  <input type="hidden" name="cancel_return" value="https://titaniumgeometry.com/shop" />
+                  <input type="hidden" name="notify_url" value="https://titaniumgeometry.com/api/paypal-webhook" />
                   
                   <button type="submit" style={buyButtonStyle}>
                     Buy Now - ${totalPrice}

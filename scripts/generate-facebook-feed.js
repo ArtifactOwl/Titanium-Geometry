@@ -4,7 +4,7 @@
  *
  * Runs automatically as part of `npm run build`, so the feed is regenerated on
  * every Vercel deploy. Point Meta Commerce Manager at:
- *     https://titanium-geometry.vercel.app/facebook-feed.csv
+ *     https://titaniumgeometry.com/facebook-feed.csv
  * and set it to fetch on a schedule.
  *
  * This feed is for "checkout on another website": each item links to its own
@@ -20,7 +20,7 @@ const OUT_FILE = path.join(ROOT, "public", "facebook-feed.csv");
 const FLAG_SALES_FILE = path.join(ROOT, "data", "flag-sales.json");
 
 // Override with SITE_URL when the custom domain goes live.
-const SITE_URL = (process.env.SITE_URL || "https://titanium-geometry.vercel.app").replace(/\/$/, "");
+const SITE_URL = (process.env.SITE_URL || "https://titaniumgeometry.com").replace(/\/$/, "");
 const BRAND = "Titanium Geometry";
 // Meta's commerce policy prohibits weapons, which includes pocket knives —
 // listing them risks the whole catalog, so they stay off the feed.

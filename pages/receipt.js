@@ -3,7 +3,7 @@ import Head from "next/head";
 
 // ====== Business details ======
 const BUSINESS = {
-  website: "titanium-geometry.vercel.app",
+  website: "titaniumgeometry.com",
   facebook: "facebook.com/titaniumgeometry",
   email: "titaniumgeometry@gmail.com",
   taxRate: 0.0635, // 6.35% Connecticut sales tax
