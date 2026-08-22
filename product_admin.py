@@ -15,7 +15,7 @@ import shutil
 import queue
 import subprocess
 import threading
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from pathlib import Path
 
 # Configuration
@@ -895,7 +895,8 @@ class ProductAdminApp:
         for row, btns in enumerate([
             [("Mark Sold", self.mark_sold), ("Mark Pending", self.mark_pending), ("Mark Available", self.mark_available), ("Delete", self.delete_product)],
             [("Edit Price", self.edit_price), ("Edit Description", self.edit_description), ("Change Group", self.change_group), ("Open Images Folder", self.open_product_folder)],
-            [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous), ("Edit Flags", self.edit_flags), ("Edit Keywords", self.edit_keywords), ("Edit Size", self.edit_size), ("Edit Details", self.edit_details)]
+            [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous), ("Edit Flags", self.edit_flags), ("Edit Keywords", self.edit_keywords), ("Edit Size", self.edit_size), ("Edit Details", self.edit_details)],
+            [("Set Sale", self.set_product_sale), ("End Sale", self.end_product_sale)]
         ]):
             btn_frame = ttk.Frame(main_frame)
             btn_frame.pack(fill='x', pady=3)
@@ -1474,6 +1475,159 @@ class ProductAdminApp:
         ttk.Button(btn_frame, text="Append Standard Text", command=append_std).pack(side='left')
         ttk.Button(btn_frame, text="Save", command=save).pack(side='right')
     
+    def get_selected_products(self):
+        """Every highlighted row, so a sale can cover one piece or twenty."""
+        selection = self.product_tree.selection()
+        if not selection:
+            messagebox.showwarning("No Selection", "Please select one or more products first")
+            return []
+        return list(selection)
+
+    def sale_expiry_date(self, mode, days_text, date_text):
+        """Turn the dialog's expiry choice into a YYYY-MM-DD string, or None."""
+        if mode == "never":
+            return None
+        if mode == "days":
+            try:
+                days = int(days_text)
+            except ValueError:
+                raise ValueError("Enter a whole number of days.")
+            if days < 1:
+                raise ValueError("Days must be at least 1.")
+            return (date.today() + timedelta(days=days)).isoformat()
+        text = (date_text or "").strip()
+        try:
+            date.fromisoformat(text)
+        except ValueError:
+            raise ValueError("Enter the end date as YYYY-MM-DD.")
+        return text
+
+    def set_product_sale(self):
+        """Put the selected pieces on sale, optionally with an end date.
+
+        The site works the expiry out as it renders a price, so a sale that runs
+        out reverts on its own without waiting for the next publish.
+        """
+        pids = self.get_selected_products()
+        if not pids:
+            return
+        by_id = {p['id']: p for p in self.data['products']}
+        chosen = [by_id[i] for i in pids if i in by_id]
+        if not chosen:
+            return
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Set Sale")
+        dialog.geometry("440x390")
+        dialog.transient(self.root); dialog.grab_set()
+        frame = ttk.Frame(dialog, padding=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        plural = "s" if len(chosen) != 1 else ""
+        ttk.Label(frame, font=('Helvetica', 10, 'bold'),
+                  text=f"{len(chosen)} product{plural} selected").pack(anchor='w')
+        names = ", ".join(p['name'] for p in chosen[:4]) + (" ..." if len(chosen) > 4 else "")
+        ttk.Label(frame, foreground='gray', wraplength=390,
+                  justify='left', text=names).pack(anchor='w', pady=(2, 12))
+
+        dtype = tk.StringVar(value="percent")
+        for label, val in [("% off", "percent"), ("$ off", "amount"), ("Set price to $", "fixed")]:
+            ttk.Radiobutton(frame, text=label, variable=dtype, value=val).pack(anchor='w')
+        amount = tk.StringVar()
+        ttk.Entry(frame, textvariable=amount, width=14).pack(anchor='w', pady=(4, 12))
+
+        ttk.Label(frame, text="Ends:").pack(anchor='w')
+        emode = tk.StringVar(value="never")
+        row = ttk.Frame(frame)
+        row.pack(anchor='w', fill='x')
+        ttk.Radiobutton(row, text="Never", variable=emode, value="never").pack(side='left')
+        ttk.Radiobutton(row, text="In", variable=emode, value="days").pack(side='left', padx=(12, 2))
+        days = tk.StringVar(value="7")
+        ttk.Entry(row, textvariable=days, width=5).pack(side='left')
+        ttk.Label(row, text="days").pack(side='left', padx=(3, 0))
+
+        row2 = ttk.Frame(frame)
+        row2.pack(anchor='w', fill='x', pady=(4, 0))
+        ttk.Radiobutton(row2, text="On", variable=emode, value="date").pack(side='left')
+        default_end = (date.today() + timedelta(days=7)).isoformat()
+        on_date = tk.StringVar(value=default_end)
+        ttk.Entry(row2, textvariable=on_date, width=13).pack(side='left', padx=(2, 0))
+        ttk.Label(row2, text="(YYYY-MM-DD)", foreground='gray').pack(side='left', padx=(4, 0))
+
+        def apply():
+            try:
+                value = float(amount.get())
+            except ValueError:
+                return messagebox.showerror("Error", "Enter a number.", parent=dialog)
+            if value <= 0:
+                return messagebox.showerror("Error", "Must be greater than zero.", parent=dialog)
+            try:
+                expires = self.sale_expiry_date(emode.get(), days.get(), on_date.get())
+            except ValueError as exc:
+                return messagebox.showerror("Error", str(exc), parent=dialog)
+
+            kind = dtype.get()
+            changed = 0
+            for product in chosen:
+                # Always discount from the original price, so re-running a sale
+                # never compounds on an already-reduced one.
+                orig = product.get('originalPrice', product['price'])
+                if kind == "percent":
+                    new = round(orig * (1 - value / 100), 2)
+                elif kind == "amount":
+                    new = round(orig - value, 2)
+                else:
+                    new = round(value, 2)
+                new = max(new, 0)
+                if new >= orig:
+                    continue
+                product['originalPrice'] = orig
+                product['salePrice'] = new
+                product['price'] = new
+                if expires:
+                    product['saleExpires'] = expires
+                else:
+                    product.pop('saleExpires', None)
+                changed += 1
+
+            if not changed:
+                return messagebox.showwarning(
+                    "Nothing to do",
+                    "That would not lower any of the selected prices.", parent=dialog)
+
+            self.save_data()
+            self.refresh_product_list()
+            dialog.destroy()
+            ending = f" until {expires}." if expires else " (no end date)."
+            messagebox.showinfo("Done", f"{changed} product(s) on sale{ending}")
+
+        btns = ttk.Frame(frame)
+        btns.pack(fill='x', pady=(16, 0))
+        ttk.Button(btns, text="Cancel", command=dialog.destroy).pack(side='left')
+        ttk.Button(btns, text="Apply Sale", command=apply).pack(side='right')
+
+    def end_product_sale(self):
+        """Put the selected pieces back to their original price."""
+        pids = self.get_selected_products()
+        if not pids:
+            return
+        by_id = {p['id']: p for p in self.data['products']}
+        restored = 0
+        for pid in pids:
+            product = by_id.get(pid)
+            if not product or 'salePrice' not in product:
+                continue
+            product['price'] = product.get('originalPrice', product['price'])
+            product.pop('salePrice', None)
+            product.pop('originalPrice', None)
+            product.pop('saleExpires', None)
+            restored += 1
+        if not restored:
+            return messagebox.showinfo("Nothing to do", "None of those are on sale.")
+        self.save_data()
+        self.refresh_product_list()
+        self.manage_status_var.set(f"Sale ended on {restored} product(s)")
+
     def edit_details(self):
         """The bullet list under Details on the product page. Products use the
         standard list unless they carry their own — knives need a different
@@ -1818,7 +1972,8 @@ class ProductAdminApp:
         ttk.Label(frame,
                   text="Anything carrying the flag is discounted automatically — the product page shows\n"
                        "the old price struck through with a SALE badge. Set the amount to 0 or untick\n"
-                       "Active to switch a sale off. Tag products in Manage Products.",
+                       "Active to switch a sale off. Leave the end date blank to run it until you\n"
+                       "stop it, or set YYYY-MM-DD and it expires by itself. Tag products in Manage Products.",
                   foreground='gray', justify='left').pack(anchor='w', pady=(0, 8))
 
         self.flag_sale_vars = {}
@@ -1836,27 +1991,43 @@ class ProductAdminApp:
             ttk.Radiobutton(row, text="% off", variable=type_var, value="percent").pack(side='left', padx=3)
             active_var = tk.BooleanVar(value=bool(rule.get('active', False)))
             ttk.Checkbutton(row, text="Active", variable=active_var).pack(side='left', padx=8)
+            ttk.Label(row, text="ends").pack(side='left')
+            expiry = ttk.Entry(row, width=11)
+            expiry.insert(0, rule.get('expires') or "")
+            expiry.pack(side='left', padx=(3, 6))
             count = sum(1 for p in self.data['products'] if key in self.product_flags(p))
             count_lbl = ttk.Label(row, text=f"{count} product(s)", foreground='gray')
             count_lbl.pack(side='left', padx=5)
-            self.flag_sale_vars[key] = (amount, type_var, active_var, label, count_lbl)
+            self.flag_sale_vars[key] = (amount, type_var, active_var, label, count_lbl, expiry)
 
         ttk.Button(frame, text="Save Flag Sales", command=self.save_flag_sale_section).pack(anchor='w', pady=(10, 0))
 
     def save_flag_sale_section(self):
         updated = {}
-        for key, (amount, type_var, active_var, _, _) in self.flag_sale_vars.items():
+        for key, (amount, type_var, active_var, _, _, expiry) in self.flag_sale_vars.items():
             try:
                 value = float(amount.get().strip() or 0)
             except ValueError:
                 return messagebox.showerror("Error", f"{self.flag_label(key)}: amount must be a number")
             if value < 0:
                 return messagebox.showerror("Error", f"{self.flag_label(key)}: amount can't be negative")
-            updated[key] = {"type": type_var.get(), "value": value, "active": active_var.get()}
+            ends = expiry.get().strip()
+            if ends:
+                try:
+                    date.fromisoformat(ends)
+                except ValueError:
+                    return messagebox.showerror(
+                        "Error", f"{self.flag_label(key)}: end date must be YYYY-MM-DD")
+            rule = {"type": type_var.get(), "value": value, "active": active_var.get()}
+            if ends:
+                rule["expires"] = ends
+            updated[key] = rule
         self.flag_sales = updated
         self.save_flag_sales()
         self.refresh_flag_sale_counts()
-        live = [self.flag_label(k) for k, r in updated.items() if r['active'] and r['value'] > 0]
+        today = date.today().isoformat()
+        live = [self.flag_label(k) for k, r in updated.items()
+                if r['active'] and r['value'] > 0 and (not r.get('expires') or r['expires'] >= today)]
         messagebox.showinfo(
             "Done",
             "Flag sales saved.\n\nLive: " + (", ".join(live) if live else "none") +
@@ -1865,7 +2036,7 @@ class ProductAdminApp:
     def refresh_flag_sale_counts(self):
         if not hasattr(self, 'flag_sale_vars'):
             return
-        for key, (_, _, _, label, count_lbl) in self.flag_sale_vars.items():
+        for key, (_, _, _, label, count_lbl, _expiry) in self.flag_sale_vars.items():
             label.config(text=self.flag_label(key))
             count = sum(1 for p in self.data['products'] if key in self.product_flags(p))
             count_lbl.config(text=f"{count} product(s)")
@@ -1898,6 +2069,24 @@ class ProductAdminApp:
         ttk.Radiobutton(row2, text="% off", variable=self.discount_type, value="percent").pack(side='left', padx=5)
         ttk.Radiobutton(row2, text="$ off", variable=self.discount_type, value="dollars").pack(side='left', padx=5)
         
+        row_exp = ttk.Frame(cat_frame)
+        row_exp.pack(fill='x', pady=5)
+        ttk.Label(row_exp, text="Ends:").pack(side='left')
+        self.sale_expiry_mode = tk.StringVar(value="never")
+        ttk.Radiobutton(row_exp, text="Never", variable=self.sale_expiry_mode,
+                        value="never").pack(side='left', padx=(6, 0))
+        ttk.Radiobutton(row_exp, text="In", variable=self.sale_expiry_mode,
+                        value="days").pack(side='left', padx=(12, 2))
+        self.sale_expiry_days = tk.StringVar(value="7")
+        ttk.Entry(row_exp, textvariable=self.sale_expiry_days, width=5).pack(side='left')
+        ttk.Label(row_exp, text="days").pack(side='left', padx=(3, 0))
+        ttk.Radiobutton(row_exp, text="On", variable=self.sale_expiry_mode,
+                        value="date").pack(side='left', padx=(12, 2))
+        self.sale_expiry_date_var = tk.StringVar(
+            value=(date.today() + timedelta(days=7)).isoformat())
+        ttk.Entry(row_exp, textvariable=self.sale_expiry_date_var, width=12).pack(side='left')
+        ttk.Label(row_exp, text="(YYYY-MM-DD)", foreground='gray').pack(side='left', padx=(4, 0))
+
         row3 = ttk.Frame(cat_frame)
         row3.pack(fill='x', pady=10)
         ttk.Button(row3, text="Apply Sale", command=self.apply_sale).pack(side='left', padx=5)
@@ -1910,7 +2099,7 @@ class ProductAdminApp:
         sales_frame = ttk.LabelFrame(main_frame, text="Current Sale Items", padding=15)
         sales_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
-        columns = ('itemId', 'name', 'original', 'sale', 'discount')
+        columns = ('itemId', 'name', 'original', 'sale', 'discount', 'ends')
         self.sales_tree = ttk.Treeview(sales_frame, columns=columns, show='headings', height=8)
         for col, w in [('itemId', 70), ('name', 180), ('original', 70), ('sale', 70), ('discount', 70)]:
             self.sales_tree.heading(col, text=col.replace('itemId', 'Item #').title())
@@ -1947,6 +2136,12 @@ class ProductAdminApp:
         category = self.sale_cat_var.get()
         flag_key = self.resolve_flag_target(category)
         dtype = self.discount_type.get()
+        try:
+            expires = self.sale_expiry_date(self.sale_expiry_mode.get(),
+                                            self.sale_expiry_days.get(),
+                                            self.sale_expiry_date_var.get())
+        except ValueError as exc:
+            return messagebox.showerror("Error", str(exc))
         count = 0
 
         for product in self.data['products']:
@@ -1963,6 +2158,10 @@ class ProductAdminApp:
             product['originalPrice'] = orig
             product['salePrice'] = new
             product['price'] = new
+            if expires:
+                product['saleExpires'] = expires
+            else:
+                product.pop('saleExpires', None)
             count += 1
         
         if count == 0:
@@ -1984,6 +2183,7 @@ class ProductAdminApp:
                 del p['originalPrice']
                 count += 1
             p.pop('salePrice', None)
+            p.pop('saleExpires', None)
         self.save_data(); self.refresh_sales_list(); self.refresh_product_list()
         messagebox.showinfo("Done", f"Restored {count} products to original price")
     
@@ -1994,6 +2194,7 @@ class ProductAdminApp:
             if p['id'] == selection[0]:
                 if 'originalPrice' in p: p['price'] = p['originalPrice']; del p['originalPrice']
                 p.pop('salePrice', None)
+                p.pop('saleExpires', None)
                 break
         self.save_data(); self.refresh_sales_list(); self.refresh_product_list()
     
@@ -2005,7 +2206,12 @@ class ProductAdminApp:
                 orig, sale = p['originalPrice'], p['salePrice']
                 disc = round((1 - sale/orig) * 100, 1) if orig > 0 else 0
                 item_id = p.get('itemId', '-')
-                self.sales_tree.insert('', tk.END, iid=p['id'], values=(item_id, p['name'], f"${orig}", f"${sale}", f"{disc}% off"))
+                ends = p.get('saleExpires') or ""
+                if ends and ends < date.today().isoformat():
+                    ends += "  (ended)"
+                self.sales_tree.insert('', tk.END, iid=p['id'],
+                                       values=(item_id, p['name'], f"${orig}", f"${sale}",
+                                               f"{disc}% off", ends or "-"))
         current = self.sale_cat_var.get()
         self.sale_cat_combo['values'] = self.sale_target_values()
         if current not in self.sale_cat_combo['values']:
