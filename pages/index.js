@@ -53,10 +53,12 @@ export default function Home() {
           </p>
 
           <ul style={heroFactsStyle}>
-            <li style={heroFactStyle}>Pendants</li>
-            <li style={heroFactStyle}>Keychains</li>
-            <li style={heroFactStyle}>Knife Handles</li>
-            <li style={heroFactStyle}>Tools</li>
+            {["Pendants", "Keychains", "Knife Handles", "Tools"].map((what, i) => (
+              <li key={what} style={heroFactStyle}>
+                {i > 0 && <span style={heroSeparatorStyle}>·</span>}
+                {what}
+              </li>
+            ))}
           </ul>
           <p style={heroMaterialsStyle}>
             Titanium · Brass · Steel · Tungsten
@@ -300,18 +302,20 @@ const heroFactsStyle = {
   display: "flex",
   justifyContent: "center",
   flexWrap: "wrap",
-  gap: "0.5rem",
+  gap: "0.15rem 0.75rem",
   padding: 0,
-  margin: "0 0 0.75rem",
+  margin: "0 0 0.35rem",
+  letterSpacing: "0.03em",
 };
 
+// Deliberately not pill-shaped: a rounded border reads as a button, and these
+// are a description of what gets made rather than links to anywhere.
 const heroFactStyle = {
-  border: "1px solid #e5e7eb",
-  borderRadius: "999px",
-  padding: "0.3rem 0.9rem",
   fontSize: "0.9rem",
   color: "#374151",
 };
+
+const heroSeparatorStyle = { color: "#d1d5db", marginRight: "0.75rem" };
 
 const heroMaterialsStyle = {
   color: "#6b7280",
