@@ -7,6 +7,7 @@ import Header from "../components/Header";
 import { useCart } from "../lib/cart";
 import { parseCartQuery } from "../lib/cartLink";
 import { thumbSrc } from "../lib/images";
+import { PAYPAL_OPTION_NAME, WEAR_OPTIONS, canChooseWear, wearLabel } from "../lib/wear";
 import { trackInitiateCheckout } from "../lib/fbpixel";
 import Footer from "../components/Footer";
 import {
@@ -26,7 +27,7 @@ const CONTACT_EMAIL = "titaniumgeometry@gmail.com";
 
 export default function CartPage() {
   const router = useRouter();
-  const { ids, add, remove, clear, loaded } = useCart();
+  const { ids, items: cartItems, add, remove, setWear, wearFor, clear, loaded } = useCart();
   const [country, setCountry] = useState("US");
   const [codeInput, setCodeInput] = useState("");
   const [appliedCode, setAppliedCode] = useState("");
@@ -118,6 +119,22 @@ export default function CartPage() {
                       {p.group}
                       {p.itemId ? ` · Item #${p.itemId}` : ""}
                     </p>
+                    {canChooseWear(p) && (
+                      <label style={wearRowStyle}>
+                        <span style={{ color: "#6b7280" }}>Wear as:</span>
+                        <select
+                          value={wearFor(p.id)}
+                          onChange={(e) => setWear(p.id, e.target.value)}
+                          style={wearSelectStyle}
+                        >
+                          {WEAR_OPTIONS.map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={priceStyle}>
@@ -283,7 +300,7 @@ export default function CartPage() {
               </div>
 
               {items.length > 0 && (
-                <PayPalCartForm items={items} totals={totals} coupon={totals.couponApplied ? coupon : null} />
+                <PayPalCartForm items={items} totals={totals} wearFor={wearFor} coupon={totals.couponApplied ? coupon : null} />
               )}
               {items.length > 0 && <SaveCart items={items} />}
               <p style={secureNoteStyle}>🔒 Secure checkout via PayPal.</p>
@@ -387,7 +404,7 @@ function SaveCart({ items }) {
  * PayPal Payments Standard "cart upload": one POST carrying every line item,
  * a single shipping charge (handling_cart) and any coupon (discount_amount_cart).
  */
-function PayPalCartForm({ items, totals, coupon }) {
+function PayPalCartForm({ items, totals, wearFor, coupon }) {
   return (
     <form
       action="https://www.paypal.com/cgi-bin/webscr"
@@ -410,6 +427,14 @@ function PayPalCartForm({ items, totals, coupon }) {
           <input type="hidden" name={`item_number_${i + 1}`} value={p.id} />
           <input type="hidden" name={`amount_${i + 1}`} value={effectivePrice(p).toFixed(2)} />
           <input type="hidden" name={`quantity_${i + 1}`} value="1" />
+          {/* The fitting rides along per line, so the order notification says
+              which one to ship. */}
+          {canChooseWear(p) && (
+            <>
+              <input type="hidden" name={`on0_${i + 1}`} value={PAYPAL_OPTION_NAME} />
+              <input type="hidden" name={`os0_${i + 1}`} value={wearLabel(wearFor(p.id))} />
+            </>
+          )}
         </React.Fragment>
       ))}
 
@@ -460,6 +485,22 @@ const thumbStyle = { width: 72, height: 72, objectFit: "cover", borderRadius: 6,
 const itemNameStyle = { fontWeight: 600, color: "#111827", textDecoration: "none" };
 const metaStyle = { color: "#6b7280", fontSize: "0.85rem", margin: "0.25rem 0 0" };
 const priceStyle = { fontWeight: 700 };
+const wearRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.4rem",
+  marginTop: "0.35rem",
+  fontSize: "0.85rem",
+};
+
+const wearSelectStyle = {
+  padding: "0.2rem 0.35rem",
+  border: "1px solid #d1d5db",
+  borderRadius: 4,
+  fontSize: "0.85rem",
+  background: "#fff",
+};
+
 const wasStyle = { textDecoration: "line-through", color: "#9ca3af", fontWeight: 400, fontSize: "0.85rem" };
 const removeBtnStyle = {
   background: "none",

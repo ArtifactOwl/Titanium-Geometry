@@ -53,10 +53,21 @@ export default function Home() {
           </p>
 
           <ul style={heroFactsStyle}>
-            {["Pendants", "Keychains", "Knife Handles", "Tools"].map((what, i) => (
+            {[
+              { what: "Pendants", href: "/wearables" },
+              { what: "Keychains", href: "/wearables" },
+              { what: "Knife Handles" },
+              { what: "Tools" },
+            ].map(({ what, href }, i) => (
               <li key={what} style={heroFactStyle}>
                 {i > 0 && <span style={heroSeparatorStyle}>·</span>}
-                {what}
+                {href ? (
+                  <Link href={href} style={heroFactLinkStyle}>
+                    {what}
+                  </Link>
+                ) : (
+                  what
+                )}
               </li>
             ))}
           </ul>
@@ -316,6 +327,15 @@ const heroFactStyle = {
 };
 
 const heroSeparatorStyle = { color: "#d1d5db", marginRight: "0.75rem" };
+
+// Underlined rather than pill-shaped: these are links in a line of text, not
+// buttons, and the last round of styling made that ambiguous.
+const heroFactLinkStyle = {
+  color: "#374151",
+  textDecoration: "underline",
+  textUnderlineOffset: "3px",
+  textDecorationColor: "#9ca3af",
+};
 
 const heroMaterialsStyle = {
   color: "#6b7280",

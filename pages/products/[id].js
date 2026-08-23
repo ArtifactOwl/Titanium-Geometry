@@ -11,6 +11,7 @@ import Footer from "../../components/Footer";
 import YouTubeEmbed from "../../components/YouTubeEmbed";
 import Testimonials from "../../components/Testimonials";
 import { displaySrc, fullSrc, thumbSrc } from "../../lib/images";
+import { DEFAULT_WEAR, PAYPAL_OPTION_NAME, WEAR_OPTIONS, canChooseWear, wearLabel } from "../../lib/wear";
 
 // The bullet list under Details, used unless a product overrides it. Knives and
 // tools need their own — the weight and the "never crack or peel" line are
@@ -45,6 +46,8 @@ export default function ProductPage() {
   // Which image number is open full size, or null. The full-resolution file is
   // only ever requested here — pages otherwise use the smaller derivatives.
   const [zoomed, setZoomed] = useState(null);
+  // Cord or key ring. Same engraved piece either way, so it costs the same.
+  const [wear, setWear] = useState(DEFAULT_WEAR);
   
   useEffect(() => {
     if (id) {
@@ -186,6 +189,30 @@ export default function ProductPage() {
                   <p style={itemIdStyle}>Item #{product.itemId}</p>
                 )}
                 
+                {canChooseWear(product) && (
+                  <div style={wearBoxStyle}>
+                    <span style={labelStyle}>Wear it as:</span>
+                    {WEAR_OPTIONS.map((option) => (
+                      <label key={option.value} style={wearOptionStyle}>
+                        <input
+                          type="radio"
+                          name="wear"
+                          value={option.value}
+                          checked={wear === option.value}
+                          onChange={() => setWear(option.value)}
+                        />
+                        <span>
+                          <strong>{option.label}</strong>{" "}
+                          <span style={{ color: "#6b7280" }}>({option.hint})</span>
+                        </span>
+                      </label>
+                    ))}
+                    <p style={wearNoteStyle}>
+                      Same piece either way — only the fitting changes.
+                    </p>
+                  </div>
+                )}
+
                 {/* Shipping Selector */}
                 <div style={shippingBoxStyle}>
                   <label style={labelStyle}>Ship to:</label>
@@ -235,13 +262,19 @@ export default function ProductPage() {
                   <input type="hidden" name="return" value="https://titaniumgeometry.com/success" />
                   <input type="hidden" name="cancel_return" value="https://titaniumgeometry.com/shop" />
                   <input type="hidden" name="notify_url" value="https://titaniumgeometry.com/api/paypal-webhook" />
+                  {canChooseWear(product) && (
+                    <>
+                      <input type="hidden" name="on0" value={PAYPAL_OPTION_NAME} />
+                      <input type="hidden" name="os0" value={wearLabel(wear)} />
+                    </>
+                  )}
                   
                   <button type="submit" style={buyButtonStyle}>
                     Buy Now - ${totalPrice}
                   </button>
                 </form>
 
-                <AddToCartButton product={product} />
+                <AddToCartButton product={product} wear={wear} />
 
                 <p style={secureNoteStyle}>
                   🔒 Secure checkout via PayPal. Pay with credit card or PayPal balance.
@@ -326,7 +359,7 @@ function Lightbox({ folder, n, name, onClose }) {
 }
 
 // Add to cart, so several pieces can be bought together with one shipping charge
-function AddToCartButton({ product }) {
+function AddToCartButton({ product, wear }) {
   const { add, has } = useCart();
   const inCart = has(product.id);
 
@@ -340,7 +373,7 @@ function AddToCartButton({ product }) {
         <button
           style={addToCartStyle}
           onClick={() => {
-            add(product.id);
+            add(product.id, wear);
             trackAddToCart(product, priceInfo(product).final);
           }}
         >
@@ -627,6 +660,28 @@ const lightboxHintStyle = {
   fontSize: "0.8rem",
   margin: 0,
   pointerEvents: "none",
+};
+
+const wearBoxStyle = {
+  border: "1px solid #e5e7eb",
+  borderRadius: "8px",
+  padding: "0.9rem 1rem",
+  margin: "0 0 1rem",
+};
+
+const wearOptionStyle = {
+  display: "flex",
+  gap: "0.55rem",
+  alignItems: "baseline",
+  padding: "0.3rem 0",
+  cursor: "pointer",
+  fontSize: "0.95rem",
+};
+
+const wearNoteStyle = {
+  margin: "0.4rem 0 0",
+  fontSize: "0.8rem",
+  color: "#6b7280",
 };
 
 const thumbnailsStyle = {
