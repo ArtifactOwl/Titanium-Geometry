@@ -10,6 +10,7 @@ import { trackAddToCart, trackViewContent } from "../../lib/fbpixel";
 import Footer from "../../components/Footer";
 import YouTubeEmbed from "../../components/YouTubeEmbed";
 import Testimonials from "../../components/Testimonials";
+import RelatedProducts from "../../components/RelatedProducts";
 import { displaySrc, fullSrc, thumbSrc } from "../../lib/images";
 import { DEFAULT_WEAR, PAYPAL_OPTION_NAME, WEAR_OPTIONS, canChooseWear, wearLabel } from "../../lib/wear";
 
@@ -304,6 +305,8 @@ export default function ProductPage() {
             </div>
           </div>
         </div>
+
+        <RelatedProducts product={product} />
       </main>
 
       {zoomed !== null && (
