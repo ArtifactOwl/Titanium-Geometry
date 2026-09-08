@@ -902,7 +902,7 @@ class ProductAdminApp:
 
         for row, btns in enumerate([
             [("Mark Sold", self.mark_sold), ("Mark Pending", self.mark_pending), ("Mark Available", self.mark_available), ("Delete", self.delete_product)],
-            [("Edit Price", self.edit_price), ("Edit Description", self.edit_description), ("Change Group", self.change_group), ("Open Images Folder", self.open_product_folder)],
+            [("Rename", self.edit_name), ("Edit Price", self.edit_price), ("Edit Description", self.edit_description), ("Change Group", self.change_group), ("Open Images Folder", self.open_product_folder)],
             [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous), ("Edit Flags", self.edit_flags), ("Edit Keywords", self.edit_keywords), ("Edit Size", self.edit_size), ("Edit Details", self.edit_details)],
             [("Set Sale", self.set_product_sale), ("End Sale", self.end_product_sale)]
         ]):
@@ -1510,6 +1510,134 @@ class ProductAdminApp:
             self.save_data(); self.refresh_product_list()
             messagebox.showinfo("Done", f"Price updated to ${new_price}")
     
+    # Every size of a product photo lives in a folder named after the product.
+    # Renaming has to move all three or the page loses its images.
+    IMAGE_TREES = ["pendants", "img", "thumb"]
+
+    def product_image_dirs(self, folder):
+        """The folders holding this product's photos, whichever exist."""
+        found = []
+        for tree in self.IMAGE_TREES:
+            path = os.path.join(PROJECT_PATH, "public", tree, folder)
+            if os.path.isdir(path):
+                found.append((tree, path))
+        return found
+
+    def edit_name(self):
+        """Rename a product, optionally moving its web address and photo folders
+        to match. Batch Create names pieces after their image files, so this is
+        how '1' becomes 'Star of David - Blue'."""
+        pid = self.get_selected_product()
+        if not pid:
+            return
+        product = next((p for p in self.data['products'] if p['id'] == pid), None)
+        if not product:
+            return
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title(f"Rename - {product['name']}")
+        dialog.geometry("560x340")
+        dialog.transient(self.root); dialog.grab_set()
+        frame = ttk.Frame(dialog, padding=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(frame, text="Product name:").pack(anchor='w')
+        name_var = tk.StringVar(value=product['name'])
+        entry = ttk.Entry(frame, textvariable=name_var, width=58)
+        entry.pack(anchor='w', pady=(2, 10))
+        entry.focus_set()
+        entry.selection_range(0, tk.END)
+
+        also_slug = tk.BooleanVar(value=True)
+        ttk.Checkbutton(frame, variable=also_slug,
+                        text="Also update the web address and photo folders"
+                        ).pack(anchor='w')
+
+        preview_var = tk.StringVar()
+        ttk.Label(frame, textvariable=preview_var, foreground='gray',
+                  justify='left', wraplength=510).pack(anchor='w', pady=(6, 0))
+
+        def refresh_preview(*_):
+            new_name = name_var.get().strip()
+            slug = self.slugify(new_name)
+            lines = [f"Item #{product.get('itemId', '-')}  ·  currently /products/{product['id']}"]
+            if not new_name:
+                lines.append("Enter a name.")
+            elif not also_slug.get():
+                lines.append(f"Web address stays /products/{product['id']} and the photo "
+                             f"folders keep the name '{product.get('folder')}'.")
+            elif not slug:
+                lines.append("That name has no letters or numbers to build an address from.")
+            elif slug == product['id']:
+                lines.append("Web address and folders already match that name.")
+            elif any(p['id'] == slug for p in self.data['products'] if p['id'] != product['id']):
+                lines.append(f"Cannot use /products/{slug} - another product already has it.")
+            else:
+                dirs = self.product_image_dirs(product.get('folder', ''))
+                moving = ", ".join(t for t, _ in dirs) or "none found"
+                lines.append(f"New address: /products/{slug}")
+                lines.append(f"Photo folders to move ({moving}): "
+                             f"{product.get('folder')} -> {slug}")
+                lines.append("Anyone holding a link to the old address will get a 404.")
+            preview_var.set("\n".join(lines))
+
+        name_var.trace_add('write', refresh_preview)
+        also_slug.trace_add('write', refresh_preview)
+        refresh_preview()
+
+        def save():
+            new_name = name_var.get().strip()
+            if not new_name:
+                return messagebox.showerror("Error", "Enter a name.", parent=dialog)
+
+            old_folder = product.get('folder', '')
+            rename_slug = also_slug.get()
+            slug = self.slugify(new_name)
+
+            if rename_slug and slug and slug != product['id']:
+                if any(p['id'] == slug for p in self.data['products'] if p['id'] != product['id']):
+                    return messagebox.showerror(
+                        "Error", f"A product with the address '{slug}' already exists.",
+                        parent=dialog)
+
+                # Move each size of the photos. If one fails, put back the ones
+                # already moved rather than leaving the product half-renamed.
+                moved = []
+                try:
+                    for _tree, path in self.product_image_dirs(old_folder):
+                        target = os.path.join(os.path.dirname(path), slug)
+                        if os.path.exists(target):
+                            raise OSError(f"{target} already exists")
+                        os.rename(path, target)
+                        moved.append((path, target))
+                except OSError as exc:
+                    for was, now in reversed(moved):
+                        try:
+                            os.rename(now, was)
+                        except OSError:
+                            pass
+                    return messagebox.showerror(
+                        "Could not move photos", f"{exc}\n\nNothing was changed.", parent=dialog)
+
+                product['id'] = slug
+                product['folder'] = slug
+
+            product['name'] = new_name
+            self.save_data()
+            self.refresh_product_list()
+            if self.product_tree.exists(product['id']):
+                self.product_tree.selection_set(product['id'])
+            dialog.destroy()
+            self.manage_status_var.set(
+                f"Renamed to {new_name}"
+                + (f"  (/products/{product['id']})" if rename_slug else ""))
+
+        btns = ttk.Frame(frame)
+        btns.pack(fill='x', side='bottom')
+        ttk.Button(btns, text="Cancel", command=dialog.destroy).pack(side='left')
+        ttk.Button(btns, text="Save", command=save).pack(side='right')
+        dialog.bind('<Return>', lambda _e: save())
+
     def edit_description(self):
         pid = self.get_selected_product()
         if not pid: return
