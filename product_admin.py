@@ -3202,6 +3202,8 @@ class ProductAdminApp:
         top = ttk.Frame(main_frame)
         top.pack(fill='x')
         ttk.Button(top, text="Check for Changes", command=self.refresh_publish_status).pack(side='left')
+        ttk.Button(top, text="Rebuild Photo Sizes",
+                   command=self.rebuild_images_clicked).pack(side='left', padx=8)
         self.publish_summary_var = tk.StringVar(value="")
         ttk.Label(top, textvariable=self.publish_summary_var, foreground='#0a7').pack(side='left', padx=12)
 
@@ -3268,6 +3270,85 @@ class ProductAdminApp:
         except (ValueError, IndexError):
             return 0
 
+    # ---------- Photo sizes ----------
+    # The site loads a 1400px copy on product pages and a 600px copy in grids;
+    # the multi-megabyte originals are only fetched when a buyer opens the
+    # full-size view. make_images.py builds those copies and this is the same
+    # logic behind a button, so photos never have to be resized by hand.
+
+    def pending_image_work(self):
+        """Copies that are missing or older than the photo they came from."""
+        try:
+            import make_images
+            return make_images.pending_work()
+        except Exception:
+            return []
+
+    def rebuild_images_clicked(self, then=None):
+        """Build the missing copies off the UI thread, then carry on."""
+        import make_images
+        try:
+            make_images.pillow()
+        except ImportError:
+            messagebox.showerror("Pillow needed", make_images.PILLOW_HINT)
+            return
+
+        jobs = self.pending_image_work()
+        if not jobs:
+            self.publish_status_var.set("Every photo already has its smaller copies.")
+            if then:
+                then()
+            return
+
+        self._set_publish_busy(True, f"Resizing 0 of {len(jobs)}…")
+        self._log(f"Building {len(jobs)} smaller photo copies…\n")
+        self._image_queue = queue.Queue()
+
+        def worker():
+            # Progress goes through the queue too; tkinter is only ever touched
+            # from the main thread.
+            def progress(done, total):
+                self._image_queue.put(("progress", done, total))
+            try:
+                built, errors = make_images.rebuild(progress=progress)
+                self._image_queue.put(("done", built, errors))
+            except Exception as exc:
+                self._image_queue.put(("failed", str(exc), []))
+
+        threading.Thread(target=worker, daemon=True).start()
+        self.root.after(120, lambda: self._poll_images(then))
+
+    def _poll_images(self, then):
+        try:
+            kind, a, b = self._image_queue.get_nowait()
+        except queue.Empty:
+            self.root.after(120, lambda: self._poll_images(then))
+            return
+
+        if kind == "progress":
+            self.publish_status_var.set(f"Resizing {a} of {b}…")
+            self.root.after(120, lambda: self._poll_images(then))
+            return
+
+        self._set_publish_busy(False, "")
+        if kind == "failed":
+            self._log(f"Could not resize photos: {a}\n")
+            messagebox.showerror("Could not resize photos", a)
+            return
+
+        built, errors = a, b
+        self._log(f"Built {built} copy(s).\n")
+        for source, message in errors[:10]:
+            self._log(f"  FAILED {os.path.basename(source)}: {message}\n")
+        if errors:
+            messagebox.showwarning(
+                "Some photos could not be resized",
+                f"Built {built}, but {len(errors)} failed. They will still show on the "
+                "site using the full-size original — just more slowly.")
+        self.refresh_publish_status()
+        if then:
+            then()
+
     def refresh_publish_status(self):
         changes, error = self.pending_publish_changes()
         if changes is None:
@@ -3300,6 +3381,9 @@ class ProductAdminApp:
         if products: bits.append("product changes")
         if images: bits.append(f"{images} image{'s' if images != 1 else ''}")
         if settings: bits.append("settings")
+        pending_images = len(self.pending_image_work())
+        if pending_images:
+            bits.append(f"{pending_images} photo copy(s) still to build")
         self.publish_summary_var.set(f"{len(changes)} file(s) to publish — " + ", ".join(bits))
 
         label = {"M": "changed", "A": "added", "??": "new", "D": "removed", "R": "renamed"}
@@ -3319,6 +3403,30 @@ class ProductAdminApp:
         changes, error = self.pending_publish_changes()
         if changes is None:
             return messagebox.showerror("Error", error)
+
+        # A photo added since the last rebuild has no small copies yet. The site
+        # falls back to the full-size original so nothing looks broken, but the
+        # page gets many times heavier — worth catching before it goes live.
+        pending_images = self.pending_image_work()
+        if pending_images and not getattr(self, '_skip_image_check', False):
+            answer = messagebox.askyesnocancel(
+                "Build the smaller photo copies first?",
+                f"{len(pending_images)} photo copy(s) have not been built yet.\n\n"
+                "Without them the site loads the full-size originals, which are "
+                "several megabytes each and make the shop slow.\n\n"
+                "Yes  - build them now, then publish\n"
+                "No   - publish anyway\n"
+                "Cancel - stop")
+            if answer is None:
+                return
+            if answer:
+                # Rebuild first, then come back through here with the copies in
+                # place so they are included in what gets published.
+                self.rebuild_images_clicked(then=self.publish_changes_clicked)
+                return
+            self._skip_image_check = True
+
+        self._skip_image_check = False
         if not changes:
             pending_commits = self.unpushed_commits()
             if not pending_commits:
