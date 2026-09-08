@@ -100,6 +100,11 @@ DEFAULT_DETAILS = [
 ]
 CHECK_ON = "☑"
 CHECK_OFF = "☐"
+# Mirrors NOT_WEARABLE_GROUPS in lib/wear.js. A whole category can be ruled
+# out of the pendant/keychain choice, and an individual piece can be too by
+# carrying "noWearChoice" -- pins and brooches are neither.
+NOT_WEARABLE_GROUPS = ["Knives & Tools"]
+WEAR_COLUMN = "wearChoice"
 PREVIEW_MAX = 240          # widest the Manage tab's preview image is drawn
 # One Facebook ad landing page per set: /fb, /fb2, /fb3. Kept in step with
 # data/ad-sets.json, which the pages read.
@@ -848,7 +853,7 @@ class ProductAdminApp:
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
-        columns = ('itemId', 'name', 'group', 'price', 'status', 'video') + tuple(FLAG_KEYS) + ('featured',) + tuple(self.ad_set_flags())
+        columns = ('itemId', 'name', 'group', 'price', 'status', 'video') + tuple(FLAG_KEYS) + ('featured',) + tuple(self.ad_set_flags()) + (WEAR_COLUMN,)
         self.product_tree = ttk.Treeview(list_frame, columns=columns, show='headings',
                                          height=10, selectmode='extended')
         for col, w in [('itemId', 70), ('name', 170), ('group', 105), ('price', 85), ('status', 65), ('video', 45)]:
@@ -863,6 +868,9 @@ class ProductAdminApp:
         for s in self.ad_sets():
             self.product_tree.heading(s['flag'], text=s.get('label', s['flag']))
             self.product_tree.column(s['flag'], width=62, anchor='center', stretch=False)
+        # Ticked means the buyer gets to pick a cord or a key ring.
+        self.product_tree.heading(WEAR_COLUMN, text='Pend/Key')
+        self.product_tree.column(WEAR_COLUMN, width=72, anchor='center', stretch=False)
         self.product_tree.bind('<Button-1>', self.on_product_tree_click)
         self.product_tree.bind('<<TreeviewSelect>>', self.on_product_selected)
 
@@ -920,7 +928,7 @@ class ProductAdminApp:
         if not (0 <= col_index < len(columns)):
             return
         flag_key = columns[col_index]
-        if flag_key not in FLAG_KEYS and flag_key not in ('featured',) + tuple(self.ad_set_flags()):
+        if flag_key not in FLAG_KEYS and flag_key not in ('featured', WEAR_COLUMN) + tuple(self.ad_set_flags()):
             return  # not a checkbox column — let the normal click through
 
         row = self.product_tree.identify_row(event.y)
@@ -929,7 +937,9 @@ class ProductAdminApp:
 
         selection = self.product_tree.selection()
         targets = selection if (row in selection and len(selection) > 1) else (row,)
-        if flag_key in ('featured',) + tuple(self.ad_set_flags()):
+        if flag_key == WEAR_COLUMN:
+            self.toggle_wear_choice_for(targets, row)
+        elif flag_key in ('featured',) + tuple(self.ad_set_flags()):
             self.toggle_featured_for(targets, row, key=flag_key)
         else:
             self.toggle_flag_for(targets, flag_key, row)
@@ -971,6 +981,67 @@ class ProductAdminApp:
         self.manage_status_var.set(
             f"{'Added to' if turn_on else 'Removed from'} {what}: {changed} product"
             f"{'s' if changed != 1 else ''} ({total} in total)")
+
+    def offers_wear_choice(self, product):
+        """Whether the site will show this piece's pendant/keychain selector.
+
+        Mirrors canChooseWear() in lib/wear.js: a knife never offers it, and an
+        individual piece opts out by carrying noWearChoice.
+        """
+        if not product or product.get('noWearChoice'):
+            return False
+        return product.get('group') not in NOT_WEARABLE_GROUPS
+
+    def toggle_wear_choice_for(self, product_ids, anchor_id):
+        """Turn the pendant/keychain selector on or off for the clicked row, and
+        every other selected row along with it."""
+        by_id = {p['id']: p for p in self.data['products']}
+        anchor = by_id.get(anchor_id)
+        if not anchor:
+            return
+
+        if anchor.get('group') in NOT_WEARABLE_GROUPS:
+            self.manage_status_var.set(
+                f"{anchor.get('group')} never offers the pendant/keychain choice")
+            return
+
+        turn_on = not self.offers_wear_choice(anchor)
+
+        changed = skipped = 0
+        for pid in product_ids:
+            product = by_id.get(pid)
+            if not product:
+                continue
+            if product.get('group') in NOT_WEARABLE_GROUPS:
+                skipped += 1
+                continue
+            if self.offers_wear_choice(product) == turn_on:
+                continue
+            if turn_on:
+                product.pop('noWearChoice', None)   # the default; keep the file tidy
+            else:
+                product['noWearChoice'] = True
+            changed += 1
+
+        if not changed and not skipped:
+            return
+
+        keep = list(product_ids)
+        if changed:
+            self.save_data()
+            self.refresh_product_list()
+            still_there = [pid for pid in keep if self.product_tree.exists(pid)]
+            if still_there:
+                self.product_tree.selection_set(still_there)
+
+        off = sum(1 for p in self.data['products'] if p.get('noWearChoice'))
+        message = (f"Pendant/keychain choice {'on' if turn_on else 'off'} for "
+                   f"{changed} product{'s' if changed != 1 else ''}")
+        if off:
+            message += f" ({off} turned off in total)"
+        if skipped:
+            message += f" - {skipped} skipped, knives never offer it"
+        self.manage_status_var.set(message)
 
     def toggle_flag_for(self, product_ids, flag_key, anchor_id):
         """Flip the flag on the clicked row, then apply that same state to every
@@ -1206,6 +1277,7 @@ class ProductAdminApp:
             flag_cells += (CHECK_ON if product.get('featured') else CHECK_OFF,)
             flag_cells += tuple(CHECK_ON if product.get(f) else CHECK_OFF
                                 for f in self.ad_set_flags())
+            flag_cells += (CHECK_ON if self.offers_wear_choice(product) else CHECK_OFF,)
             self.product_tree.insert('', tk.END, iid=product['id'],
                                      values=(item_id, product['name'], product['group'],
                                              price_display, status, has_video) + flag_cells)
