@@ -1273,7 +1273,8 @@
         "Anodized color - will never crack or peel",
         "Extremely durable and scratch resistant",
         "Each piece is one of a kind"
-      ]
+      ],
+      "fbFeatured2": true
     },
     {
       "id": "growth-and-flourish",
@@ -1306,6 +1307,68 @@
         "Extremely durable and scratch resistant",
         "Each piece is one of a kind"
       ]
+    },
+    {
+      "id": "star-of-david-multicolor-pendantkeychain",
+      "name": "Star of David Multicolor Pendant/Keychain",
+      "description": "Star of David Pendant in Titanium\n\nIncludes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 35.0,
+      "group": "Judaic",
+      "folder": "star-of-david-multicolor-pendantkeychain",
+      "status": "available",
+      "itemId": "J0001",
+      "created": "2026-09-08",
+      "size": "1\" / 2.5cm"
+    },
+    {
+      "id": "star-of-david-geometric-violet-blue-pendantkeychain",
+      "name": "Star of David Geometric Violet & Blue Pendant/Keychain",
+      "description": "Star of David Pendant in Titanium\n\nIncludes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 35.0,
+      "group": "Judaic",
+      "folder": "star-of-david-geometric-violet-blue-pendantkeychain",
+      "status": "available",
+      "itemId": "J0002",
+      "created": "2026-09-08",
+      "size": "1\" / 2.5cm"
+    },
+    {
+      "id": "star-of-david-geometric-redorange-pendantkeychain",
+      "name": "Star of David Geometric Red/Orange Pendant/Keychain",
+      "description": "Star of David Pendant in Titanium\n\nIncludes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 35.0,
+      "group": "Judaic",
+      "folder": "star-of-david-geometric-redorange-pendantkeychain",
+      "status": "available",
+      "itemId": "J0003",
+      "created": "2026-09-08",
+      "size": "1\" / 2.5cm"
+    },
+    {
+      "id": "star-of-david-nested-purple-blue-pendantkeychain",
+      "name": "Star of David Nested Purple & Blue Pendant/Keychain",
+      "description": "Star of David Pendant in Titanium\n\nIncludes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 35.0,
+      "group": "Judaic",
+      "folder": "star-of-david-nested-purple-blue-pendantkeychain",
+      "status": "available",
+      "itemId": "J0004",
+      "created": "2026-09-08",
+      "size": "1\" / 2.5cm"
+    },
+    {
+      "id": "star-of-david-geometric-blue-pin",
+      "name": "Star of David Geometric Blue Pin",
+      "description": "Star of David Pendant in Titanium\n\nIncludes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 35.0,
+      "group": "Judaic",
+      "folder": "star-of-david-geometric-blue-pin",
+      "status": "available",
+      "itemId": "J0005",
+      "created": "2026-09-08",
+      "size": "1\" / 2.5cm",
+      "fbFeatured3": true,
+      "noWearChoice": true
     }
   ],
   "previousWork": [
