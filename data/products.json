@@ -1408,7 +1408,8 @@
       "status": "available",
       "itemId": "O0026",
       "created": "2026-09-09",
-      "size": "3.5cm or 1.4\""
+      "size": "3.5cm or 1.4\"",
+      "featured": true
     }
   ],
   "previousWork": [
