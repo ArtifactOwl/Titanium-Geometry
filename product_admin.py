@@ -105,6 +105,8 @@ CHECK_OFF = "☐"
 # carrying "noWearChoice" -- pins and brooches are neither.
 NOT_WEARABLE_GROUPS = ["Knives & Tools"]
 WEAR_COLUMN = "wearChoice"
+# The live site, for building shareable product links.
+SITE_URL = "https://titaniumgeometry.com"
 PREVIEW_MAX = 240          # widest the Manage tab's preview image is drawn
 # One Facebook ad landing page per set: /fb, /fb2, /fb3. Kept in step with
 # data/ad-sets.json, which the pages read.
@@ -147,8 +149,10 @@ class ProductAdminApp:
         self.notebook.add(self.groups_tab, text="  Groups  ")
         self.notebook.add(self.videos_tab, text="  Videos  ")
         self.notebook.add(self.ads_tab, text="  Ad Images  ")
-        self.notebook.add(self.publish_tab, text="  Publish  ")
         self.notebook.add(self.settings_tab, text="  Settings  ")
+        # Publish sits last: it is the end of every job, and always in the
+        # same place however many tabs come before it.
+        self.notebook.add(self.publish_tab, text="  Publish  ")
         
         self.create_add_tab()
         self.create_batch_tab()
@@ -521,8 +525,10 @@ class ProductAdminApp:
         self.refresh_product_list()
         self.update_item_id_preview()
         
-        if messagebox.askyesno("Open Folder?", "Open the product folder to add images?"):
+        try:
             os.startfile(folder_path)
+        except OSError:
+            pass   # folder will still be there; not worth interrupting for
     
     def open_pendants_folder(self):
         os.makedirs(PENDANTS_FOLDER, exist_ok=True)
@@ -902,7 +908,7 @@ class ProductAdminApp:
 
         for row, btns in enumerate([
             [("Mark Sold", self.mark_sold), ("Mark Pending", self.mark_pending), ("Mark Available", self.mark_available), ("Delete", self.delete_product)],
-            [("Rename", self.edit_name), ("Edit Price", self.edit_price), ("Edit Description", self.edit_description), ("Change Group", self.change_group), ("Open Images Folder", self.open_product_folder)],
+            [("Rename", self.edit_name), ("Edit Price", self.edit_price), ("Edit Description", self.edit_description), ("Change Group", self.change_group), ("Open Images Folder", self.open_product_folder), ("Copy Link", self.copy_product_link)],
             [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous), ("Edit Flags", self.edit_flags), ("Edit Keywords", self.edit_keywords), ("Edit Size", self.edit_size), ("Edit Details", self.edit_details)],
             [("Set Sale", self.set_product_sale), ("End Sale", self.end_product_sale)]
         ]):
@@ -1912,6 +1918,28 @@ class ProductAdminApp:
             self.save_data(); self.refresh_product_list(); dialog.destroy()
         ttk.Button(frame, text="Save", command=save).pack(pady=10)
     
+    def copy_product_link(self):
+        """Put a piece's public address on the clipboard, ready to paste into a
+        Facebook post. Linking straight to the piece is what turned a post into
+        a sale before, so this is the last step of adding one."""
+        pid = self.get_selected_product()
+        if not pid:
+            return
+        product = next((p for p in self.data['products'] if p['id'] == pid), None)
+        if not product:
+            return
+
+        url = f"{SITE_URL}/products/{product['id']}"
+        self.root.clipboard_clear()
+        self.root.clipboard_append(url)
+        self.root.update()   # make it survive this window closing
+
+        status = product.get('status', 'available')
+        note = f"Copied: {url}"
+        if status != 'available':
+            note += f"   (this piece is marked {status})"
+        self.manage_status_var.set(note)
+
     def open_product_folder(self):
         pid = self.get_selected_product()
         if not pid: return
