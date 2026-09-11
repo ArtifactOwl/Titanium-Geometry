@@ -29,11 +29,26 @@ export default function FeaturedRail({ products, rotate = true, pinned = PINNED_
   // visit this is, and varying the markup would break hydration.
   const [ordered, setOrdered] = useState(products);
   const rotated = useRef(false);
+  const railRef = useRef(null);
 
   useEffect(() => {
     setOrdered(products);
     rotated.current = false;
   }, [products]);
+
+  // How many cards a visitor can actually see, measured rather than guessed —
+  // the count is set by CSS breakpoints, and measuring keeps this in step with
+  // them instead of repeating the numbers here.
+  const visibleCount = useCallback(() => {
+    const el = railRef.current;
+    const card = el && el.querySelector("[data-rail-item]");
+    if (!el || !card) return 1;
+    const width = card.getBoundingClientRect().width;
+    if (!width) return 1;
+    const styles = window.getComputedStyle(el);
+    const gap = parseFloat(styles.columnGap || styles.gap) || 0;
+    return Math.max(1, Math.round(el.clientWidth / (width + gap)));
+  }, []);
 
   useEffect(() => {
     if (!rotate || rotated.current) return;
@@ -44,12 +59,17 @@ export default function FeaturedRail({ products, rotate = true, pinned = PINNED_
     if (tail.length < 2) return;   // nothing behind the pinned ones to rotate
     rotated.current = true;
 
+    // Move on by however many rotating cards were on screen, so a return visit
+    // shows a fresh set rather than the same ones shifted along by one. The
+    // pinned pieces take up part of the view, so they come off the step.
+    const step = Math.max(1, Math.min(visibleCount() - pinned, tail.length - 1));
+
     let offset;
     try {
       const saved = window.localStorage.getItem(OFFSET_KEY);
       offset = saved == null ? Math.floor(Math.random() * tail.length) : parseInt(saved, 10);
       if (!Number.isFinite(offset)) offset = 0;
-      window.localStorage.setItem(OFFSET_KEY, String((offset + 1) % tail.length));
+      window.localStorage.setItem(OFFSET_KEY, String((offset + step) % tail.length));
     } catch {
       // Private browsing or blocked storage — still vary it, just don't persist.
       offset = Math.floor(Math.random() * tail.length);
@@ -57,9 +77,8 @@ export default function FeaturedRail({ products, rotate = true, pinned = PINNED_
 
     const i = ((offset % tail.length) + tail.length) % tail.length;
     if (i !== 0) setOrdered([...head, ...tail.slice(i), ...tail.slice(0, i)]);
-  }, [products, rotate, pinned]);
+  }, [products, rotate, pinned, visibleCount]);
 
-  const railRef = useRef(null);
   const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: 0 });
   const [dragging, setDragging] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
