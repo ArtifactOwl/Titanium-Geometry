@@ -13,10 +13,17 @@ const DRAG_THRESHOLD = 6;
 
 const OFFSET_KEY = "tg_featured_offset";
 
-export default function FeaturedRail({ products, rotate = true }) {
-  // Which piece leads the rail changes from visit to visit, so landing on the
-  // homepage doesn't always show the same two. The order is rotated (not
-  // shuffled) so the sequence stays coherent and every piece gets a turn.
+// The newest pieces hold the front of the rail on every visit. Rotating the
+// whole list would keep pushing new work out of view, which defeats the point
+// of featuring it; rotating everything behind them still keeps the rail from
+// looking identical each time.
+const PINNED_NEWEST = 3;
+
+export default function FeaturedRail({ products, rotate = true, pinned = PINNED_NEWEST }) {
+  // Behind the pinned newest pieces, which one comes next changes from visit
+  // to visit, so the rail doesn't look identical every time. The order is
+  // rotated (not shuffled) so the sequence stays coherent and every piece
+  // gets a turn.
   //
   // It happens after mount, never during render: the server has no idea which
   // visit this is, and varying the markup would break hydration.
@@ -30,23 +37,27 @@ export default function FeaturedRail({ products, rotate = true }) {
 
   useEffect(() => {
     if (!rotate || rotated.current) return;
-    if (!products || products.length < 2) return;
+    if (!products) return;
+
+    const head = products.slice(0, pinned);
+    const tail = products.slice(pinned);
+    if (tail.length < 2) return;   // nothing behind the pinned ones to rotate
     rotated.current = true;
 
     let offset;
     try {
       const saved = window.localStorage.getItem(OFFSET_KEY);
-      offset = saved == null ? Math.floor(Math.random() * products.length) : parseInt(saved, 10);
+      offset = saved == null ? Math.floor(Math.random() * tail.length) : parseInt(saved, 10);
       if (!Number.isFinite(offset)) offset = 0;
-      window.localStorage.setItem(OFFSET_KEY, String((offset + 1) % products.length));
+      window.localStorage.setItem(OFFSET_KEY, String((offset + 1) % tail.length));
     } catch {
       // Private browsing or blocked storage — still vary it, just don't persist.
-      offset = Math.floor(Math.random() * products.length);
+      offset = Math.floor(Math.random() * tail.length);
     }
 
-    const i = ((offset % products.length) + products.length) % products.length;
-    if (i !== 0) setOrdered([...products.slice(i), ...products.slice(0, i)]);
-  }, [products, rotate]);
+    const i = ((offset % tail.length) + tail.length) % tail.length;
+    if (i !== 0) setOrdered([...head, ...tail.slice(i), ...tail.slice(0, i)]);
+  }, [products, rotate, pinned]);
 
   const railRef = useRef(null);
   const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: 0 });

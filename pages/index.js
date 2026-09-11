@@ -10,14 +10,19 @@ export default function Home() {
   const groups = products.groups;
   const categoryImages = products.categoryImages || {};
   const availableProducts = products.products.filter(p => !p.sold);
-  // All featured pieces; the rail scrolls horizontally through them.
-  // Memoised so its identity is stable — the rail re-runs its ordering
-  // whenever this prop changes.
+  // All featured pieces, newest first — new work is the reason to come back,
+  // so it leads the rail rather than sitting at the end in creation order.
+  // Memoised so its identity is stable: the rail re-runs its ordering whenever
+  // this prop changes.
   const featured = useMemo(
     () =>
-      products.products.filter(
-        (p) => p.featured && (p.status === "available" || !p.status)
-      ),
+      products.products
+        .filter((p) => p.featured && (p.status === "available" || !p.status))
+        .sort(
+          (a, b) =>
+            String(b.created || "").localeCompare(String(a.created || "")) ||
+            String(a.itemId || "").localeCompare(String(b.itemId || ""))
+        ),
     []
   );
   
