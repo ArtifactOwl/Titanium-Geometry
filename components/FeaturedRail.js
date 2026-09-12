@@ -15,9 +15,12 @@ const OFFSET_KEY = "tg_featured_offset";
 
 // The newest pieces hold the front of the rail on every visit. Rotating the
 // whole list would keep pushing new work out of view, which defeats the point
-// of featuring it; rotating everything behind them still keeps the rail from
-// looking identical each time.
-const PINNED_NEWEST = 3;
+// of featuring it.
+//
+// Two rather than three: five cards show on a desktop, so pinning three left
+// only two changing and the rail looked static. Two pinned leaves three of the
+// five turning over, which is visible.
+const PINNED_NEWEST = 2;
 
 export default function FeaturedRail({ products, rotate = true, pinned = PINNED_NEWEST }) {
   // Behind the pinned newest pieces, which one comes next changes from visit
@@ -42,12 +45,21 @@ export default function FeaturedRail({ products, rotate = true, pinned = PINNED_
   const visibleCount = useCallback(() => {
     const el = railRef.current;
     const card = el && el.querySelector("[data-rail-item]");
-    if (!el || !card) return 1;
-    const width = card.getBoundingClientRect().width;
-    if (!width) return 1;
-    const styles = window.getComputedStyle(el);
-    const gap = parseFloat(styles.columnGap || styles.gap) || 0;
-    return Math.max(1, Math.round(el.clientWidth / (width + gap)));
+    const width = card ? card.getBoundingClientRect().width : 0;
+    if (el && width && el.clientWidth) {
+      const styles = window.getComputedStyle(el);
+      const gap = parseFloat(styles.columnGap || styles.gap) || 0;
+      return Math.max(1, Math.round(el.clientWidth / (width + gap)));
+    }
+    // Nothing measurable — a hidden tab, or a layout that hasn't settled.
+    // Guessing from the window beats falling back to 1, which would collapse
+    // the step and make the rail look like it never moves. Mirrors the
+    // breakpoints on .featured-rail in _app.js.
+    const w = typeof window === "undefined" ? 1200 : window.innerWidth;
+    if (w > 1150) return 5;
+    if (w > 900) return 4;
+    if (w > 650) return 3;
+    return 2;
   }, []);
 
   useEffect(() => {
