@@ -1405,7 +1405,7 @@
       "price": 95.0,
       "group": "Organic and Other Pendants",
       "folder": "owl-purple-red",
-      "status": "available",
+      "status": "sold",
       "itemId": "O0026",
       "created": "2026-09-09",
       "size": "3.5cm or 1.4\"",
@@ -1431,10 +1431,23 @@
       "price": 95.0,
       "group": "Organic and Other Pendants",
       "folder": "bird-of-prey-gold-purple",
-      "status": "available",
+      "status": "sold",
       "itemId": "O0027",
       "created": "2026-09-11",
       "size": "3.5cm or 1.4 inch wide",
+      "featured": true
+    },
+    {
+      "id": "fire-ice-titanium-handle-utility-knife",
+      "name": "Fire & Ice Titanium Handle - Utility Knife",
+      "description": "Fire & Ice Titanium Handle - Utility Knife with replaceable standard utility blades.\n\nIncludes:\n10 utility blades\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS First Class (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 130.0,
+      "group": "Knives & Tools",
+      "folder": "fire-ice-titanium-handle-utility-knife",
+      "status": "available",
+      "itemId": "X0006",
+      "created": "2026-09-13",
+      "size": "9cm / 3.5\" closed, 15cm or 6\" open",
       "featured": true
     }
   ],
