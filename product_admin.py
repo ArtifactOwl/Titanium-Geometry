@@ -406,9 +406,10 @@ class ProductAdminApp:
         self.std_preview.pack(fill='x', pady=(5, 0))
         self.update_std_preview()
         
-        # Sale flags (admin-only grouping, not shown on the website)
+        # Sale flags group products for a sale and never reach the website;
+        # Featured does the opposite, so the two are separated here.
         self.add_flag_vars = {}
-        flag_frame = ttk.LabelFrame(main_frame, text="Sale Flags (not shown on the website)", padding=8)
+        flag_frame = ttk.LabelFrame(main_frame, text="Flags", padding=8)
         flag_frame.pack(fill='x', pady=(0, 10))
         self.add_flag_checks = {}
         for key in FLAG_KEYS:
@@ -417,6 +418,12 @@ class ProductAdminApp:
             cb.pack(side='left', padx=8)
             self.add_flag_vars[key] = var
             self.add_flag_checks[key] = cb
+        ttk.Separator(flag_frame, orient='vertical').pack(side='left', fill='y', padx=10)
+        self.add_featured_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(flag_frame, text="★ Featured", variable=self.add_featured_var).pack(side='left', padx=8)
+        ttk.Label(flag_frame, foreground='gray',
+                  text="sale flags stay admin-only; Featured leads the homepage rail"
+                  ).pack(side='left', padx=(12, 0))
 
         ttk.Label(main_frame, text="YouTube Video URL (optional):").pack(anchor='w')
         self.youtube_entry = ttk.Entry(main_frame, width=50)
@@ -508,12 +515,17 @@ class ProductAdminApp:
         size = self.clean_size(self.size_entry.get())
         if size: product["size"] = size
         self.set_product_flags(product, [k for k, v in self.add_flag_vars.items() if v.get()])
+        if self.add_featured_var.get():
+            product["featured"] = True
 
         self.data['products'].append(product)
         self.save_data()
         
         messagebox.showinfo("Success", f"Product '{name}' added!\nItem ID: {item_id}\n\nAdd images to:\n{folder_path}")
         
+        self.add_featured_var.set(False)
+        for var in self.add_flag_vars.values():
+            var.set(False)
         self.name_entry.delete(0, tk.END)
         self.desc_text.delete("1.0", tk.END)
         self.price_entry.delete(0, tk.END)
@@ -859,12 +871,16 @@ class ProductAdminApp:
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         
+        # The preview sits to the right of the whole tree area, so the tree and
+        # its scrollbars get their own frame.
+        tree_area = ttk.Frame(list_frame)
+
         columns = ('itemId', 'name', 'group', 'price', 'status', 'video') + tuple(FLAG_KEYS) + ('featured',) + tuple(self.ad_set_flags()) + (WEAR_COLUMN,)
-        self.product_tree = ttk.Treeview(list_frame, columns=columns, show='headings',
+        self.product_tree = ttk.Treeview(tree_area, columns=columns, show='headings',
                                          height=10, selectmode='extended')
-        for col, w in [('itemId', 70), ('name', 170), ('group', 105), ('price', 85), ('status', 65), ('video', 45)]:
+        for col, w in [('itemId', 70), ('name', 200), ('group', 115), ('price', 90), ('status', 70), ('video', 45)]:
             self.product_tree.heading(col, text=col.replace('itemId', 'Item #').title())
-            self.product_tree.column(col, width=w)
+            self.product_tree.column(col, width=w, minwidth=w, stretch=False)
         # One clickable checkbox column per sale flag
         for key in FLAG_KEYS:
             self.product_tree.heading(key, text=self.flag_label(key))
@@ -891,10 +907,15 @@ class ProductAdminApp:
         self.preview_caption = tk.StringVar(value="")
         ttk.Label(preview_frame, textvariable=self.preview_caption, wraplength=PREVIEW_MAX,
                   justify='center', foreground='gray').pack(pady=(8, 0))
+        tree_area.pack(side='left', fill=tk.BOTH, expand=True)
 
-        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.product_tree.yview)
-        self.product_tree.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side='right', fill='y')
+        vbar = ttk.Scrollbar(tree_area, orient=tk.VERTICAL, command=self.product_tree.yview)
+        hbar = ttk.Scrollbar(tree_area, orient=tk.HORIZONTAL, command=self.product_tree.xview)
+        self.product_tree.configure(yscrollcommand=vbar.set, xscrollcommand=hbar.set)
+        # Bottom first: the horizontal bar has to span the full width, under
+        # both the tree and the vertical bar.
+        hbar.pack(side='bottom', fill='x')
+        vbar.pack(side='right', fill='y')
         self.product_tree.pack(side='left', fill=tk.BOTH, expand=True)
 
         hint_frame = ttk.Frame(main_frame)
@@ -3253,6 +3274,11 @@ class ProductAdminApp:
         self.publish_button.pack(side='left')
         self.pull_button = ttk.Button(btn_row, text="Get Latest First", command=self.pull_latest_clicked)
         self.pull_button.pack(side='left', padx=8)
+        # On by default: forgetting it is invisible, because the site quietly
+        # falls back to the multi-megabyte originals.
+        self.publish_build_images = tk.BooleanVar(value=True)
+        ttk.Checkbutton(btn_row, text="Build photo sizes first",
+                        variable=self.publish_build_images).pack(side='left', padx=(8, 0))
         self.publish_status_var = tk.StringVar(value="")
         ttk.Label(btn_row, textvariable=self.publish_status_var, foreground='gray').pack(side='left', padx=10)
 
@@ -3318,7 +3344,12 @@ class ProductAdminApp:
         try:
             make_images.pillow()
         except ImportError:
-            messagebox.showerror("Pillow needed", make_images.PILLOW_HINT)
+            # Not worth a dialog: the photos still work, just at full size.
+            self._log(make_images.PILLOW_HINT + "\n"
+                      "Publishing anyway - photos will load at full size.\n")
+            self.publish_status_var.set("Pillow missing - photo sizes not built")
+            if then:
+                then()
             return
 
         jobs = self.pending_image_work()
@@ -3361,7 +3392,7 @@ class ProductAdminApp:
         self._set_publish_busy(False, "")
         if kind == "failed":
             self._log(f"Could not resize photos: {a}\n")
-            messagebox.showerror("Could not resize photos", a)
+            self.publish_status_var.set("Could not resize photos - see the log")
             return
 
         built, errors = a, b
@@ -3369,10 +3400,8 @@ class ProductAdminApp:
         for source, message in errors[:10]:
             self._log(f"  FAILED {os.path.basename(source)}: {message}\n")
         if errors:
-            messagebox.showwarning(
-                "Some photos could not be resized",
-                f"Built {built}, but {len(errors)} failed. They will still show on the "
-                "site using the full-size original — just more slowly.")
+            self._log(f"  {len(errors)} photo(s) could not be resized. They will still "
+                      f"show on the site using the full-size original, just more slowly.\n")
         self.refresh_publish_status()
         if then:
             then()
@@ -3427,65 +3456,45 @@ class ProductAdminApp:
         self.pull_button.config(state=state)
         self.publish_status_var.set(status)
 
-    def publish_changes_clicked(self):
+    def publish_changes_clicked(self, images_done=False):
+        """Publish without asking anything.
+
+        Progress and the result go to the log below; only a failure to reach
+        GitHub is worth interrupting for.
+        """
         changes, error = self.pending_publish_changes()
         if changes is None:
-            return messagebox.showerror("Error", error)
+            return messagebox.showerror("Couldn't check for changes", error)
 
         # A photo added since the last rebuild has no small copies yet. The site
         # falls back to the full-size original so nothing looks broken, but the
-        # page gets many times heavier — worth catching before it goes live.
-        pending_images = self.pending_image_work()
-        if pending_images and not getattr(self, '_skip_image_check', False):
-            answer = messagebox.askyesnocancel(
-                "Build the smaller photo copies first?",
-                f"{len(pending_images)} photo copy(s) have not been built yet.\n\n"
-                "Without them the site loads the full-size originals, which are "
-                "several megabytes each and make the shop slow.\n\n"
-                "Yes  - build them now, then publish\n"
-                "No   - publish anyway\n"
-                "Cancel - stop")
-            if answer is None:
-                return
-            if answer:
-                # Rebuild first, then come back through here with the copies in
-                # place so they are included in what gets published.
-                self.rebuild_images_clicked(then=self.publish_changes_clicked)
-                return
-            self._skip_image_check = True
+        # page gets many times heavier.
+        if not images_done and self.publish_build_images.get() and self.pending_image_work():
+            self.rebuild_images_clicked(
+                then=lambda: self.publish_changes_clicked(images_done=True))
+            return
 
-        self._skip_image_check = False
         if not changes:
             pending_commits = self.unpushed_commits()
             if not pending_commits:
-                return messagebox.showinfo("Nothing to publish",
-                                           "There are no changes waiting to go to the website.")
-            if not messagebox.askyesno(
-                    "Send saved changes?",
-                    f"{pending_commits} change(s) are saved here but haven't reached the "
-                    "website yet.\n\nSend them now?"):
+                self._log("Nothing to publish - the website already has everything.\n")
+                self.publish_status_var.set("Nothing to publish")
                 return
-            self._set_publish_busy(True, "Publishing…")
-            self._log("Sending saved changes…\n")
+            self._set_publish_busy(True, "Publishing...")
+            self._log(f"Sending {pending_commits} saved change(s)...\n")
             self._git_queue = queue.Queue()
             threading.Thread(target=self._publish_worker, args=(None, []), daemon=True).start()
             self.root.after(150, lambda: self._poll_git(self._publish_finished))
             return
 
-        preview = "\n".join(f"  {path}" for _, path in changes[:12])
-        if len(changes) > 12:
-            preview += f"\n  ...and {len(changes) - 12} more"
-        if not messagebox.askyesno(
-                "Publish to the website?",
-                f"{len(changes)} file(s) will be sent to GitHub and the live site "
-                f"will rebuild:\n\n{preview}\n\nThis updates the public website. Continue?"):
-            return
-
         note = self.publish_message.get().strip() or "Update products from admin tool"
-        self._set_publish_busy(True, "Publishing…")
-        self._log("Publishing…\n")
+        self._set_publish_busy(True, "Publishing...")
+        listing = "\n".join(f"  {path}" for _, path in changes[:12])
+        if len(changes) > 12:
+            listing += f"\n  ...and {len(changes) - 12} more"
+        self._log(f"Publishing {len(changes)} file(s)...\n{listing}\n")
         # The git work runs off the UI thread and posts its result to a queue that
-        # the main thread polls — tkinter must only ever be touched from here.
+        # the main thread polls - tkinter must only ever be touched from here.
         self._git_queue = queue.Queue()
         paths = [path for _, path in changes]
         threading.Thread(target=self._publish_worker, args=(note, paths), daemon=True).start()
@@ -3543,9 +3552,7 @@ class ProductAdminApp:
 
         if failed is None:
             self.publish_message.delete(0, tk.END)
-            messagebox.showinfo("Published",
-                                "Your changes are on their way.\n\n"
-                                "Vercel rebuilds the site automatically — usually a minute or two.")
+            self.publish_status_var.set("Published - Vercel is rebuilding")
         else:
             name, out = failed
             hint = ""
