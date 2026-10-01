@@ -3300,41 +3300,10 @@ class ProductAdminApp:
         self.hosted_status_var = tk.StringVar(value="")
         ttk.Label(top, textvariable=self.hosted_status_var, foreground='#0a7').pack(side='right')
 
-        body = ttk.Frame(main)
-        body.pack(fill=tk.BOTH, expand=True)
-
-        preview = ttk.LabelFrame(body, text="Preview", padding=8)
-        preview.pack(side='right', fill='y', padx=(10, 0))
-        self.hosted_preview_photo = None
-        self.hosted_preview_label = ttk.Label(preview, text="Select an image", anchor='center', width=34)
-        self.hosted_preview_label.pack(expand=True)
-        self.hosted_preview_caption = tk.StringVar(value="")
-        ttk.Label(preview, textvariable=self.hosted_preview_caption, wraplength=PREVIEW_MAX,
-                  justify='center', foreground='gray').pack(pady=(8, 0))
-
-        area = ttk.Frame(body)
-        area.pack(side='left', fill=tk.BOTH, expand=True)
-        style = ttk.Style()
-        style.configure("Hosted.Treeview", rowheight=HOSTED_THUMB + 8)
-        self.hosted_tree = ttk.Treeview(area, columns=('dims', 'kb', 'logo'), show='tree headings',
-                                        selectmode='extended', style="Hosted.Treeview")
-        self.hosted_tree.heading('#0', text='Image')
-        self.hosted_tree.column('#0', width=300, stretch=True)
-        for col, label, width in [('dims', 'Dimensions', 100), ('kb', 'Size', 70), ('logo', 'Logo', 150)]:
-            self.hosted_tree.heading(col, text=label)
-            self.hosted_tree.column(col, width=width, anchor='center', stretch=False)
-        vbar = ttk.Scrollbar(area, orient=tk.VERTICAL, command=self.hosted_tree.yview)
-        self.hosted_tree.configure(yscrollcommand=vbar.set)
-        vbar.pack(side='right', fill='y')
-        self.hosted_tree.pack(side='left', fill=tk.BOTH, expand=True)
-        self.hosted_tree.bind('<<TreeviewSelect>>', self.on_hosted_selected)
-        self.hosted_thumbs = {}
-
-        ttk.Label(main, foreground='gray',
-                  text="Ctrl-click or Shift-click to select several.").pack(anchor='w', pady=(4, 0))
-
+        # Controls along the bottom are packed before the list so they keep
+        # their space; the list then takes whatever height is left.
         logo = ttk.LabelFrame(main, text="Logo", padding=8)
-        logo.pack(fill='x', pady=(8, 0))
+        logo.pack(side='bottom', fill='x', pady=(8, 0))
         row = ttk.Frame(logo)
         row.pack(fill='x')
         ttk.Label(row, text="Where:").pack(side='left')
@@ -3362,6 +3331,40 @@ class ProductAdminApp:
         row3.pack(fill='x', pady=(8, 0))
         ttk.Button(row3, text="Add Logo to Selected", command=self.add_logo_to_selected).pack(side='left')
         ttk.Button(row3, text="Remove Logo", command=self.remove_logo_from_selected).pack(side='left', padx=8)
+
+        ttk.Label(main, foreground='gray',
+                  text="Ctrl-click or Shift-click to select several.").pack(side='bottom', anchor='w', pady=(4, 0))
+
+        body = ttk.Frame(main)
+
+        preview = ttk.LabelFrame(body, text="Preview", padding=8)
+        preview.pack(side='right', fill='y', padx=(10, 0))
+        self.hosted_preview_photo = None
+        self.hosted_preview_label = ttk.Label(preview, text="Select an image", anchor='center', width=34)
+        self.hosted_preview_label.pack(expand=True)
+        self.hosted_preview_caption = tk.StringVar(value="")
+        ttk.Label(preview, textvariable=self.hosted_preview_caption, wraplength=PREVIEW_MAX,
+                  justify='center', foreground='gray').pack(pady=(8, 0))
+
+        area = ttk.Frame(body)
+        area.pack(side='left', fill=tk.BOTH, expand=True)
+        style = ttk.Style()
+        style.configure("Hosted.Treeview", rowheight=HOSTED_THUMB + 8)
+        self.hosted_tree = ttk.Treeview(area, columns=('dims', 'kb', 'logo'), show='tree headings',
+                                        selectmode='extended', style="Hosted.Treeview",
+                                        height=6)
+        self.hosted_tree.heading('#0', text='Image')
+        self.hosted_tree.column('#0', width=300, stretch=True)
+        for col, label, width in [('dims', 'Dimensions', 100), ('kb', 'Size', 70), ('logo', 'Logo', 150)]:
+            self.hosted_tree.heading(col, text=label)
+            self.hosted_tree.column(col, width=width, anchor='center', stretch=False)
+        vbar = ttk.Scrollbar(area, orient=tk.VERTICAL, command=self.hosted_tree.yview)
+        self.hosted_tree.configure(yscrollcommand=vbar.set)
+        vbar.pack(side='right', fill='y')
+        self.hosted_tree.pack(side='left', fill=tk.BOTH, expand=True)
+        self.hosted_tree.bind('<<TreeviewSelect>>', self.on_hosted_selected)
+        self.hosted_thumbs = {}
+        body.pack(fill=tk.BOTH, expand=True)
 
         self.refresh_hosted_list()
 
