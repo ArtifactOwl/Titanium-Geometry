@@ -21,13 +21,18 @@ export default function KnivesPage() {
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState("newest");
 
-  const available = useMemo(
-    () =>
-      products.products.filter(
-        (p) => p.group === GROUP && (p.status === "available" || !p.status)
-      ),
-    []
-  );
+  const { available, sold } = useMemo(() => {
+    const mine = products.products.filter((p) => p.group === GROUP);
+    // Newest first, so the gallery below opens on recent work rather than the
+    // first thing ever made.
+    const newestFirst = (a, b) =>
+      String(b.created || "").localeCompare(String(a.created || "")) ||
+      String(b.itemId || "").localeCompare(String(a.itemId || ""));
+    return {
+      available: mine.filter((p) => p.status === "available" || !p.status),
+      sold: mine.filter((p) => p.status === "sold").sort(newestFirst),
+    };
+  }, []);
 
   const shown = useMemo(
     () => sortProducts(filterProducts(available, { query }), sortKey, effectivePrice),
@@ -99,6 +104,25 @@ export default function KnivesPage() {
           </p>
         )}
 
+        {/* Sold work is still worth showing here: it is the only evidence of
+            range once a one-off is gone, and it is what a commission is
+            argued from. */}
+        {sold.length > 0 && (
+          <section style={soldSectionStyle}>
+            <h2 style={h2Style}>Previously Sold</h2>
+            <p style={soldIntroStyle}>
+              Each of these was the only one and has gone to its owner. They are here
+              to show what the work looks like — something along the same lines can be
+              made to order.
+            </p>
+            <div style={gridStyle}>
+              {sold.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Scoped to this category, so the knife quote leads. */}
         <Testimonials title="What Buyers Say" limit={3} group={GROUP} />
 
@@ -164,6 +188,19 @@ const gridStyle = {
   marginBottom: "2.5rem",
 };
 const emptyStyle = { color: "#6b7280", padding: "2rem", textAlign: "center" };
+const h2Style = { fontSize: "1.4rem", marginBottom: "0.4rem" };
+const soldSectionStyle = {
+  marginTop: "1rem",
+  paddingTop: "2rem",
+  borderTop: "1px solid #e5e7eb",
+};
+const soldIntroStyle = {
+  color: "#6b7280",
+  fontSize: "0.9rem",
+  maxWidth: "620px",
+  margin: "0 0 1.25rem",
+  lineHeight: 1.6,
+};
 const ctaStyle = {
   textAlign: "center",
   marginTop: "2.5rem",
