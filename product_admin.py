@@ -88,6 +88,7 @@ PUBLISH_PATHS = [
     "public/previous-work",
     "public/categories",
     "public/testimonials",
+    "public/hosted",
 ]
 # Mirrors DEFAULT_DETAILS in pages/products/[id].js — the bullet list shown
 # under Details unless a product carries its own "details" array.
@@ -98,6 +99,9 @@ DEFAULT_DETAILS = [
     "Extremely durable and scratch resistant",
     "Each piece is one of a kind",
 ]
+# Mirrors NO_STOCK_DETAILS_GROUPS in pages/products/[id].js: these categories
+# fall back to no bullets at all rather than the pendant ones.
+NO_STOCK_DETAILS_GROUPS = ["Knives & Tools"]
 CHECK_ON = "☑"
 CHECK_OFF = "☐"
 # Mirrors NOT_WEARABLE_GROUPS in lib/wear.js. A whole category can be ruled
@@ -107,6 +111,14 @@ NOT_WEARABLE_GROUPS = ["Knives & Tools"]
 WEAR_COLUMN = "wearChoice"
 # The live site, for building shareable product links.
 SITE_URL = "https://titaniumgeometry.com"
+# Images dropped here go online at SITE_URL/hosted/<name>.
+HOSTED_DIR = os.path.join(PROJECT_PATH, "public", "hosted")
+# Clean copies of anything that has had a logo stamped on. Gitignored: the
+# repository is public, so an unmarked original committed there is fetchable.
+HOSTED_ORIGINALS_DIR = os.path.join(PROJECT_PATH, "hosted-originals")
+HOSTED_PREFIX = "titaniumgeometry"
+HOSTED_THUMB = 64
+LOGO_FILE = os.path.join(PROJECT_PATH, "public", "logo-banner.png")
 PREVIEW_MAX = 240          # widest the Manage tab's preview image is drawn
 # One Facebook ad landing page per set: /fb, /fb2, /fb3. Kept in step with
 # data/ad-sets.json, which the pages read.
@@ -137,6 +149,7 @@ class ProductAdminApp:
         self.groups_tab = ttk.Frame(self.notebook)
         self.videos_tab = ttk.Frame(self.notebook)
         self.ads_tab = ttk.Frame(self.notebook)
+        self.hosted_tab = ttk.Frame(self.notebook)
         self.publish_tab = ttk.Frame(self.notebook)
         self.settings_tab = ttk.Frame(self.notebook)
         
@@ -149,6 +162,7 @@ class ProductAdminApp:
         self.notebook.add(self.groups_tab, text="  Groups  ")
         self.notebook.add(self.videos_tab, text="  Videos  ")
         self.notebook.add(self.ads_tab, text="  Ad Images  ")
+        self.notebook.add(self.hosted_tab, text="  Hosted Images  ")
         self.notebook.add(self.settings_tab, text="  Settings  ")
         # Publish sits last: it is the end of every job, and always in the
         # same place however many tabs come before it.
@@ -163,6 +177,7 @@ class ProductAdminApp:
         self.create_groups_tab()
         self.create_videos_tab()
         self.create_ads_tab()
+        self.create_hosted_tab()
         self.create_publish_tab()
         self.create_settings_tab()
         
@@ -1855,6 +1870,12 @@ class ProductAdminApp:
         self.refresh_product_list()
         self.manage_status_var.set(f"Sale ended on {restored} product(s)")
 
+    def standard_details_for(self, product):
+        """What a product shows when it has no bullets of its own."""
+        if product.get('group') in NO_STOCK_DETAILS_GROUPS:
+            return []
+        return list(DEFAULT_DETAILS)
+
     def edit_details(self):
         """The bullet list under Details on the product page. Products use the
         standard list unless they carry their own — knives need a different
@@ -1887,17 +1908,18 @@ class ProductAdminApp:
             text.insert("1.0", "\n".join(lines))
             state_var.set("Using its own details" if custom else "Using the standard details")
 
-        load(product['details'] if using_custom else DEFAULT_DETAILS, using_custom)
+        standard = self.standard_details_for(product)
+        load(product['details'] if using_custom else standard, using_custom)
 
         btn_frame = ttk.Frame(frame)
         btn_frame.pack(fill='x', pady=(10, 0))
 
         def reset():
-            load(DEFAULT_DETAILS, False)
+            load(standard, False)
 
         def save():
             lines = [ln.strip() for ln in text.get("1.0", tk.END).splitlines() if ln.strip()]
-            if not lines or lines == list(DEFAULT_DETAILS):
+            if not lines or lines == standard:
                 # Matching the standard list means there's nothing to override —
                 # drop the key so products.json stays clean.
                 product.pop('details', None)
@@ -3212,6 +3234,400 @@ class ProductAdminApp:
             messagebox.showinfo("Folder", AD_OUTPUT_DIR)
 
     # ==================== PUBLISH TAB ====================
+    # ==================== HOSTED IMAGES TAB ====================
+    # Any image dropped in public/hosted/ goes online at
+    # titaniumgeometry.com/hosted/<file> on the next Publish -- for linking
+    # from forums, Marketplace and so on.
+    #
+    # Logos are stamped onto the hosted copy. The clean original is kept in
+    # hosted-originals/, which is gitignored: the repository is public, so an
+    # unmarked original committed there could be pulled straight off GitHub.
+    # Every stamp starts again from that original, so changing corners never
+    # piles one logo on top of another.
+
+    HOSTED_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff")
+    LOGO_CORNERS = [("top-left", "Top left"), ("top-right", "Top right"),
+                    ("bottom-left", "Bottom left"), ("bottom-right", "Bottom right"),
+                    ("center", "Center")]
+
+    def hosted_files(self):
+        if not os.path.isdir(HOSTED_DIR):
+            return []
+        names = [f for f in os.listdir(HOSTED_DIR) if f.lower().endswith(self.HOSTED_EXTS)]
+        match = re.compile(rf'^{HOSTED_PREFIX}(\d+)\.jpg$', re.I)
+
+        def order(name):
+            m = match.match(name)
+            # Numbered ones in number order, anything not yet renamed after them.
+            return (0, int(m.group(1)), "") if m else (1, 0, name.lower())
+        return sorted(names, key=order)
+
+    def hosted_url(self, name):
+        return f"{SITE_URL}/hosted/{name}"
+
+    # ---- logo bookkeeping ----
+    def _hosted_logo_log(self):
+        path = os.path.join(HOSTED_ORIGINALS_DIR, "_logos.json")
+        try:
+            with open(path, encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+
+    def _save_hosted_logo_log(self, log):
+        os.makedirs(HOSTED_ORIGINALS_DIR, exist_ok=True)
+        with open(os.path.join(HOSTED_ORIGINALS_DIR, "_logos.json"), 'w', encoding='utf-8') as f:
+            json.dump(log, f, indent=2)
+
+    def create_hosted_tab(self):
+        main = ttk.Frame(self.hosted_tab, padding="20")
+        main.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(main, text="Hosted Images", font=('Helvetica', 16, 'bold')).pack(pady=(0, 4))
+        ttk.Label(main, foreground='gray', justify='center',
+                  text="Drop images into the folder, then Publish - each one goes online at "
+                       f"{SITE_URL}/hosted/<name>.\n"
+                       "Logos are stamped on a copy; the clean original stays on this computer only."
+                  ).pack(pady=(0, 8))
+
+        top = ttk.Frame(main)
+        top.pack(fill='x', pady=(0, 6))
+        ttk.Button(top, text="Open Folder", command=self.open_hosted_folder).pack(side='left')
+        ttk.Button(top, text="Refresh", command=self.refresh_hosted_list).pack(side='left', padx=6)
+        ttk.Button(top, text=f"Rename to {HOSTED_PREFIX}###.jpg",
+                   command=self.rename_hosted_images).pack(side='left', padx=6)
+        ttk.Button(top, text="Copy Link", command=self.copy_hosted_links).pack(side='left', padx=6)
+        self.hosted_status_var = tk.StringVar(value="")
+        ttk.Label(top, textvariable=self.hosted_status_var, foreground='#0a7').pack(side='right')
+
+        body = ttk.Frame(main)
+        body.pack(fill=tk.BOTH, expand=True)
+
+        preview = ttk.LabelFrame(body, text="Preview", padding=8)
+        preview.pack(side='right', fill='y', padx=(10, 0))
+        self.hosted_preview_photo = None
+        self.hosted_preview_label = ttk.Label(preview, text="Select an image", anchor='center', width=34)
+        self.hosted_preview_label.pack(expand=True)
+        self.hosted_preview_caption = tk.StringVar(value="")
+        ttk.Label(preview, textvariable=self.hosted_preview_caption, wraplength=PREVIEW_MAX,
+                  justify='center', foreground='gray').pack(pady=(8, 0))
+
+        area = ttk.Frame(body)
+        area.pack(side='left', fill=tk.BOTH, expand=True)
+        style = ttk.Style()
+        style.configure("Hosted.Treeview", rowheight=HOSTED_THUMB + 8)
+        self.hosted_tree = ttk.Treeview(area, columns=('dims', 'kb', 'logo'), show='tree headings',
+                                        selectmode='extended', style="Hosted.Treeview")
+        self.hosted_tree.heading('#0', text='Image')
+        self.hosted_tree.column('#0', width=300, stretch=True)
+        for col, label, width in [('dims', 'Dimensions', 100), ('kb', 'Size', 70), ('logo', 'Logo', 150)]:
+            self.hosted_tree.heading(col, text=label)
+            self.hosted_tree.column(col, width=width, anchor='center', stretch=False)
+        vbar = ttk.Scrollbar(area, orient=tk.VERTICAL, command=self.hosted_tree.yview)
+        self.hosted_tree.configure(yscrollcommand=vbar.set)
+        vbar.pack(side='right', fill='y')
+        self.hosted_tree.pack(side='left', fill=tk.BOTH, expand=True)
+        self.hosted_tree.bind('<<TreeviewSelect>>', self.on_hosted_selected)
+        self.hosted_thumbs = {}
+
+        ttk.Label(main, foreground='gray',
+                  text="Ctrl-click or Shift-click to select several.").pack(anchor='w', pady=(4, 0))
+
+        logo = ttk.LabelFrame(main, text="Logo", padding=8)
+        logo.pack(fill='x', pady=(8, 0))
+        row = ttk.Frame(logo)
+        row.pack(fill='x')
+        ttk.Label(row, text="Where:").pack(side='left')
+        self.logo_corner_vars = {}
+        for key, label in self.LOGO_CORNERS:
+            var = tk.BooleanVar(value=(key == "bottom-right"))
+            ttk.Checkbutton(row, text=label, variable=var).pack(side='left', padx=6)
+            self.logo_corner_vars[key] = var
+
+        row2 = ttk.Frame(logo)
+        row2.pack(fill='x', pady=(6, 0))
+        ttk.Label(row2, text="Size (% of width):").pack(side='left')
+        self.logo_scale_var = tk.StringVar(value="18")
+        ttk.Spinbox(row2, from_=5, to=60, increment=1, width=5,
+                    textvariable=self.logo_scale_var).pack(side='left', padx=(4, 14))
+        ttk.Label(row2, text="Opacity %:").pack(side='left')
+        self.logo_opacity_var = tk.StringVar(value="100")
+        ttk.Spinbox(row2, from_=10, to=100, increment=5, width=5,
+                    textvariable=self.logo_opacity_var).pack(side='left', padx=(4, 14))
+        self.logo_backing_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(row2, text="Light backing (keeps it readable on dark photos)",
+                        variable=self.logo_backing_var).pack(side='left')
+
+        row3 = ttk.Frame(logo)
+        row3.pack(fill='x', pady=(8, 0))
+        ttk.Button(row3, text="Add Logo to Selected", command=self.add_logo_to_selected).pack(side='left')
+        ttk.Button(row3, text="Remove Logo", command=self.remove_logo_from_selected).pack(side='left', padx=8)
+
+        self.refresh_hosted_list()
+
+    def open_hosted_folder(self):
+        os.makedirs(HOSTED_DIR, exist_ok=True)
+        try:
+            os.startfile(HOSTED_DIR)
+        except OSError:
+            pass
+
+    def _hosted_thumbnail(self, path):
+        from PIL import Image, ImageOps, ImageTk
+        img = Image.open(path)
+        try:
+            img.draft('RGB', (HOSTED_THUMB * 2, HOSTED_THUMB * 2))   # fast JPEG decode
+        except Exception:
+            pass
+        img = ImageOps.exif_transpose(img).convert('RGB')
+        img.thumbnail((HOSTED_THUMB, HOSTED_THUMB))
+        return ImageTk.PhotoImage(img), img.size
+
+    def refresh_hosted_list(self):
+        previous = self.hosted_tree.selection()
+        for item in self.hosted_tree.get_children():
+            self.hosted_tree.delete(item)
+        self.hosted_thumbs = {}
+
+        try:
+            from PIL import Image
+            have_pillow = True
+        except ImportError:
+            have_pillow = False
+
+        logos = self._hosted_logo_log()
+        names = self.hosted_files()
+        for name in names:
+            path = os.path.join(HOSTED_DIR, name)
+            dims, thumb = "?", None
+            if have_pillow:
+                try:
+                    with Image.open(path) as im:
+                        dims = f"{im.width}x{im.height}"
+                    thumb, _ = self._hosted_thumbnail(path)
+                    self.hosted_thumbs[name] = thumb
+                except Exception:
+                    dims = "unreadable"
+            kb = f"{os.path.getsize(path) // 1024} KB"
+            corners = logos.get(name)
+            logo_text = ", ".join(c.replace('-', ' ') for c in corners) if corners else ""
+            kwargs = {"image": thumb} if thumb else {}
+            self.hosted_tree.insert('', tk.END, iid=name, text=f"  {name}",
+                                    values=(dims, kb, logo_text), **kwargs)
+
+        still = [i for i in previous if self.hosted_tree.exists(i)]
+        if still:
+            self.hosted_tree.selection_set(still)
+        unnamed = sum(1 for n in names if not re.match(rf'^{HOSTED_PREFIX}\d+\.jpg$', n, re.I))
+        note = f"{len(names)} image(s)"
+        if unnamed:
+            note += f" - {unnamed} not yet renamed"
+        if not have_pillow:
+            note += " - install Pillow for thumbnails"
+        self.hosted_status_var.set(note)
+
+    def on_hosted_selected(self, event=None):
+        selection = self.hosted_tree.selection()
+        self.hosted_preview_photo = None
+        if not selection:
+            self.hosted_preview_label.config(image='', text="Select an image")
+            self.hosted_preview_caption.set("")
+            return
+        name = selection[0]
+        path = os.path.join(HOSTED_DIR, name)
+        try:
+            from PIL import Image, ImageOps, ImageTk
+            img = ImageOps.exif_transpose(Image.open(path)).convert('RGB')
+            img.thumbnail((PREVIEW_MAX, PREVIEW_MAX))
+            self.hosted_preview_photo = ImageTk.PhotoImage(img)
+            self.hosted_preview_label.config(image=self.hosted_preview_photo, text='')
+        except Exception:
+            self.hosted_preview_label.config(image='', text="(no preview)")
+        extra = f"\n(+{len(selection) - 1} more selected)" if len(selection) > 1 else ""
+        self.hosted_preview_caption.set(f"{name}{extra}\n{self.hosted_url(name)}")
+
+    # ---- rename ----
+    def rename_hosted_images(self):
+        """Give every image without one a titaniumgeometry### name, numbering on
+        from the highest already used, in the order the files were added."""
+        if not os.path.isdir(HOSTED_DIR):
+            return self.hosted_status_var.set("No hosted folder yet - use Open Folder.")
+        pattern = re.compile(rf'^{HOSTED_PREFIX}(\d+)\.jpg$', re.I)
+        names = self.hosted_files()
+        used = [int(m.group(1)) for m in (pattern.match(n) for n in names) if m]
+        next_number = max(used) + 1 if used else 1
+
+        todo = [n for n in names if not pattern.match(n)]
+        todo.sort(key=lambda n: (os.path.getmtime(os.path.join(HOSTED_DIR, n)), n.lower()))
+        if not todo:
+            return self.hosted_status_var.set("Every image already has a titaniumgeometry name.")
+
+        logos = self._hosted_logo_log()
+        renamed, failed = 0, []
+        for name in todo:
+            new = f"{HOSTED_PREFIX}{next_number:03d}.jpg"
+            src = os.path.join(HOSTED_DIR, name)
+            dst = os.path.join(HOSTED_DIR, new)
+            try:
+                if name.lower().endswith(('.jpg', '.jpeg')):
+                    os.rename(src, dst)                 # lossless: same bytes
+                else:
+                    self._convert_to_jpg(src, dst)
+                    os.remove(src)
+                # Keep the clean original paired with its new name.
+                old_orig = os.path.join(HOSTED_ORIGINALS_DIR, name)
+                if os.path.exists(old_orig):
+                    new_orig = os.path.join(HOSTED_ORIGINALS_DIR, new)
+                    if name.lower().endswith(('.jpg', '.jpeg')):
+                        os.rename(old_orig, new_orig)
+                    else:
+                        self._convert_to_jpg(old_orig, new_orig)
+                        os.remove(old_orig)
+                if name in logos:
+                    logos[new] = logos.pop(name)
+                renamed += 1
+                next_number += 1
+            except Exception as exc:
+                failed.append(f"{name}: {exc}")
+
+        if logos:
+            self._save_hosted_logo_log(logos)
+        self.refresh_hosted_list()
+        msg = f"Renamed {renamed} image(s)."
+        if failed:
+            msg += f" {len(failed)} could not be converted (HEIC needs saving as JPG first)."
+        self.hosted_status_var.set(msg)
+
+    def _convert_to_jpg(self, src, dst):
+        from PIL import Image, ImageOps
+        img = ImageOps.exif_transpose(Image.open(src))
+        if img.mode in ('RGBA', 'LA', 'P'):
+            img = img.convert('RGBA')
+            flat = Image.new('RGB', img.size, (255, 255, 255))
+            flat.paste(img, mask=img.getchannel('A'))
+            img = flat
+        img.convert('RGB').save(dst, 'JPEG', quality=92, optimize=True)
+
+    # ---- logo ----
+    def _logo_image(self):
+        if getattr(self, '_logo_cache', None) is None:
+            from PIL import Image
+            logo = Image.open(LOGO_FILE).convert('RGBA')
+            box = logo.getchannel('A').getbbox()
+            self._logo_cache = logo.crop(box) if box else logo
+        return self._logo_cache
+
+    def stamp_logo(self, name, corners, scale_pct, opacity_pct, backing):
+        """Stamp the logo onto a hosted image, always starting from the clean
+        original so repeated stamps never pile up."""
+        from PIL import Image, ImageOps, ImageDraw
+        path = os.path.join(HOSTED_DIR, name)
+        original = os.path.join(HOSTED_ORIGINALS_DIR, name)
+        os.makedirs(HOSTED_ORIGINALS_DIR, exist_ok=True)
+        if not os.path.exists(original):
+            shutil.copy2(path, original)
+
+        base = ImageOps.exif_transpose(Image.open(original)).convert('RGBA')
+        width, height = base.size
+        logo = self._logo_image()
+        lw = max(24, int(width * scale_pct / 100))
+        lh = max(1, int(logo.height * lw / logo.width))
+        mark = logo.resize((lw, lh), Image.LANCZOS)
+        if opacity_pct < 100:
+            alpha = mark.getchannel('A').point(lambda a: a * opacity_pct // 100)
+            mark.putalpha(alpha)
+
+        pad = int(lw * 0.06) if backing else 0
+        margin = int(min(width, height) * 0.03)
+        bw, bh = lw + 2 * pad, lh + 2 * pad
+        for corner in corners:
+            if corner == "center":
+                x, y = (width - bw) // 2, (height - bh) // 2
+            else:
+                x = margin if "left" in corner else width - bw - margin
+                y = margin if "top" in corner else height - bh - margin
+            if backing:
+                panel = Image.new('RGBA', base.size, (0, 0, 0, 0))
+                ImageDraw.Draw(panel).rounded_rectangle(
+                    [x, y, x + bw, y + bh], radius=max(4, pad * 2),
+                    fill=(255, 255, 255, int(190 * opacity_pct / 100)))
+                base = Image.alpha_composite(base, panel)
+            base.alpha_composite(mark, (x + pad, y + pad))
+
+        base.convert('RGB').save(path, 'JPEG', quality=90, optimize=True)
+
+    def add_logo_to_selected(self):
+        selection = self.hosted_tree.selection()
+        if not selection:
+            return self.hosted_status_var.set("Select one or more images first.")
+        corners = [k for k, v in self.logo_corner_vars.items() if v.get()]
+        if not corners:
+            return self.hosted_status_var.set("Tick at least one position for the logo.")
+        try:
+            scale = max(5, min(60, int(float(self.logo_scale_var.get()))))
+            opacity = max(10, min(100, int(float(self.logo_opacity_var.get()))))
+        except ValueError:
+            return self.hosted_status_var.set("Size and opacity must be numbers.")
+        try:
+            import PIL  # noqa: F401
+        except ImportError:
+            return self.hosted_status_var.set("Install Pillow to add logos:  pip install Pillow")
+
+        logos = self._hosted_logo_log()
+        done, failed = 0, []
+        for name in selection:
+            try:
+                self.stamp_logo(name, corners, scale, opacity, self.logo_backing_var.get())
+                logos[name] = corners
+                done += 1
+            except Exception as exc:
+                failed.append(f"{name}: {exc}")
+        self._save_hosted_logo_log(logos)
+        self.refresh_hosted_list()
+        self.hosted_tree.selection_set([n for n in selection if self.hosted_tree.exists(n)])
+        msg = f"Logo added to {done} image(s) - Publish to put them online."
+        if failed:
+            msg += f" {len(failed)} failed."
+        self.hosted_status_var.set(msg)
+
+    def remove_logo_from_selected(self):
+        selection = self.hosted_tree.selection()
+        if not selection:
+            return self.hosted_status_var.set("Select one or more images first.")
+        logos = self._hosted_logo_log()
+        restored = 0
+        for name in selection:
+            original = os.path.join(HOSTED_ORIGINALS_DIR, name)
+            if os.path.exists(original):
+                shutil.copy2(original, os.path.join(HOSTED_DIR, name))
+                os.remove(original)
+                logos.pop(name, None)
+                restored += 1
+        self._save_hosted_logo_log(logos)
+        self.refresh_hosted_list()
+        self.hosted_status_var.set(
+            f"Restored {restored} original(s)." if restored else "None of those have a logo.")
+
+    # ---- links ----
+    def copy_hosted_links(self):
+        selection = self.hosted_tree.selection()
+        if not selection:
+            return self.hosted_status_var.set("Select one or more images first.")
+        urls = [self.hosted_url(n) for n in selection]
+        self.root.clipboard_clear()
+        self.root.clipboard_append("\n".join(urls))
+        self.root.update()
+
+        # A link to something not yet published is a 404 for whoever clicks it.
+        rel = [f"public/hosted/{n}" for n in selection]
+        ok, out = self.run_git(["status", "--porcelain", "--"] + rel)
+        pending = ok and out.strip()
+        what = urls[0] if len(urls) == 1 else f"{len(urls)} links"
+        if pending:
+            self.hosted_status_var.set(f"Copied {what} - not online until you Publish.")
+        else:
+            self.hosted_status_var.set(f"Copied {what}")
+
     def run_git(self, args, timeout=120):
         """Run a git command in the project folder. Returns (ok, output)."""
         kwargs = {}

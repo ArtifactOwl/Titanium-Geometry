@@ -25,14 +25,24 @@ export const DEFAULT_DETAILS = [
   "Each piece is one of a kind",
 ];
 
-/** A product's own bullets when it has them, otherwise the standard list. */
+// The standard list describes a pendant. Knives and tools get none: an 8 gram
+// weight and "will never crack or peel" aren't true of a folding knife, and
+// each one needs its own specifics written anyway.
+export const NO_STOCK_DETAILS_GROUPS = ["Knives & Tools"];
+
+/** The bullets a product falls back to when it has none of its own. */
+export function standardDetailsFor(product) {
+  return product && NO_STOCK_DETAILS_GROUPS.includes(product.group) ? [] : DEFAULT_DETAILS;
+}
+
+/** A product's own bullets when it has them, otherwise its category's standard. */
 export function detailsFor(product) {
   const custom = product && product.details;
   if (Array.isArray(custom)) {
     const lines = custom.map((s) => String(s).trim()).filter(Boolean);
     if (lines.length) return lines;
   }
-  return DEFAULT_DETAILS;
+  return standardDetailsFor(product);
 }
 
 export default function ProductPage() {
@@ -288,18 +298,24 @@ export default function ProductPage() {
               <h2 style={descTitleStyle}>Description</h2>
               <p>{product.description}</p>
               
-              <h3 style={detailsTitleStyle}>Details</h3>
-              <ul style={detailsListStyle}>
-                {/* Size leads the list, and is left out entirely when unset. */}
-                {product.size && String(product.size).trim() && (
-                  <li>
-                    <strong>Size:</strong> {String(product.size).trim()}
-                  </li>
-                )}
-                {detailsFor(product).map((line, i) => (
-                  <li key={i}>{line}</li>
-                ))}
-              </ul>
+              {/* A knife with no size and no bullets of its own yet would
+                  otherwise show an empty Details heading. */}
+              {((product.size && String(product.size).trim()) || detailsFor(product).length > 0) && (
+                <>
+                  <h3 style={detailsTitleStyle}>Details</h3>
+                  <ul style={detailsListStyle}>
+                    {/* Size leads the list, and is left out entirely when unset. */}
+                    {product.size && String(product.size).trim() && (
+                      <li>
+                        <strong>Size:</strong> {String(product.size).trim()}
+                      </li>
+                    )}
+                    {detailsFor(product).map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
 
               <Testimonials title="What Buyers Say" limit={2} compact group={product.group} />
             </div>
