@@ -42,7 +42,7 @@ DEFAULT_STANDARD_TEXT = """Includes:
 • Gift box
 
 Shipping:
-• US orders ship free via USPS First Class (3-5 business days)
+• US orders ship free via USPS Ground Advantage - Insured (3-5 business days)
 • International shipping available
 
 Care:
@@ -55,7 +55,7 @@ DEFAULT_KNIFE_STANDARD_TEXT = """Includes:
 • The knife or tool pictured, with precision laser engraving and anodized color on the titanium
 
 Shipping:
-• US orders ship free via USPS First Class (3-5 business days)
+• US orders ship free via USPS Ground Advantage - Insured (3-5 business days)
 • International shipping available
 
 Care:

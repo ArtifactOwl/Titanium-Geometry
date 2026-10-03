@@ -105,7 +105,7 @@ Includes:
 • Gift box
 
 Shipping:
-• US orders ship free via USPS First Class (3-5 business days)
+• US orders ship free via USPS Ground Advantage - Insured (3-5 business days)
 • International shipping available
 
 Care:
