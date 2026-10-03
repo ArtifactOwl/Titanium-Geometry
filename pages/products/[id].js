@@ -25,14 +25,19 @@ export const DEFAULT_DETAILS = [
   "Each piece is one of a kind",
 ];
 
-// The standard list describes a pendant. Knives and tools get none: an 8 gram
-// weight and "will never crack or peel" aren't true of a folding knife, and
-// each one needs its own specifics written anyway.
-export const NO_STOCK_DETAILS_GROUPS = ["Knives & Tools"];
+// The standard list describes a pendant -- an 8 gram weight isn't true of a
+// folding knife -- so knives and tools fall back to their own set. Mirrored as
+// KNIFE_DETAILS in product_admin.py; keep the two identical.
+export const KNIFE_DETAILS_GROUPS = ["Knives & Tools"];
+export const KNIFE_DETAILS = [
+  "Individually laser engraved and anodized",
+  "Anodized color is grown from the titanium itself, so it won't crack or peel; high-wear edges can rub through over time with heavy use",
+  "Each piece is one of a kind",
+];
 
 /** The bullets a product falls back to when it has none of its own. */
 export function standardDetailsFor(product) {
-  return product && NO_STOCK_DETAILS_GROUPS.includes(product.group) ? [] : DEFAULT_DETAILS;
+  return product && KNIFE_DETAILS_GROUPS.includes(product.group) ? KNIFE_DETAILS : DEFAULT_DETAILS;
 }
 
 /** A product's own bullets when it has them, otherwise its category's standard. */

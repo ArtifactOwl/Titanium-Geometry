@@ -49,6 +49,24 @@ Care:
 • Titanium is hypoallergenic and will not tarnish
 • Clean with mild soap and water"""
 
+# Knives and tools get their own standard text: the pendant version promises a
+# cord and says the piece can be worn in the shower and the ocean.
+DEFAULT_KNIFE_STANDARD_TEXT = """Includes:
+• The knife or tool pictured, with precision laser engraving and anodized color on the titanium
+
+Shipping:
+• US orders ship free via USPS First Class (3-5 business days)
+• International shipping available
+
+Care:
+• The anodized color is grown from the titanium itself, so it won't crack or peel. High-wear edges can rub through over time with heavy use, as with any anodized titanium.
+• Titanium will not tarnish
+• Clean the titanium with mild soap and water and a soft toothbrush
+• Skin oils, sunscreen, etc. may temporarily change the visible coloration; cleaning with soap will restore it"""
+
+# The presets every install starts with, and what "Reset" puts back.
+BUILTIN_STD_PRESETS = {"Pendant": DEFAULT_STANDARD_TEXT, "Knives & Tools": DEFAULT_KNIFE_STANDARD_TEXT}
+
 # Sale flags: internal keys never change (they're what's stored in products.json);
 # the display names are editable in the Settings tab. Flags are admin-only —
 # nothing on the website renders them.
@@ -99,9 +117,15 @@ DEFAULT_DETAILS = [
     "Extremely durable and scratch resistant",
     "Each piece is one of a kind",
 ]
-# Mirrors NO_STOCK_DETAILS_GROUPS in pages/products/[id].js: these categories
-# fall back to no bullets at all rather than the pendant ones.
-NO_STOCK_DETAILS_GROUPS = ["Knives & Tools"]
+# Mirrors KNIFE_DETAILS / KNIFE_DETAILS_GROUPS in pages/products/[id].js. The
+# pendant bullets (an 8 gram weight) aren't true of a knife, so these categories
+# fall back to their own set instead.
+KNIFE_DETAILS_GROUPS = ["Knives & Tools"]
+KNIFE_DETAILS = [
+    "Individually laser engraved and anodized",
+    "Anodized color is grown from the titanium itself, so it won't crack or peel; high-wear edges can rub through over time with heavy use",
+    "Each piece is one of a kind",
+]
 CHECK_ON = "☑"
 CHECK_OFF = "☐"
 # Mirrors NOT_WEARABLE_GROUPS in lib/wear.js. A whole category can be ruled
@@ -252,6 +276,45 @@ class ProductAdminApp:
 
     def ad_set_flags(self):
         return [s['flag'] for s in self.ad_sets()]
+
+    # ---------- Standard text presets ----------
+    # Named blocks of text appended to descriptions. Each category points at
+    # one by default; any can be picked instead when adding a product. Older
+    # settings files held a single "standardText" -- that becomes "Pendant".
+    def std_presets(self):
+        presets = self.settings.get('standardTextPresets')
+        if not presets:
+            presets = [
+                {"name": "Pendant",
+                 "text": (self.settings.get('standardText') or DEFAULT_STANDARD_TEXT).strip()},
+                {"name": "Knives & Tools", "text": DEFAULT_KNIFE_STANDARD_TEXT},
+            ]
+            self.settings['standardTextPresets'] = presets
+            self.settings.setdefault('standardTextByGroup', {"Knives & Tools": "Knives & Tools"})
+        return presets
+
+    def std_preset_names(self):
+        return [p['name'] for p in self.std_presets()]
+
+    def std_text_for(self, name):
+        presets = self.std_presets()
+        for p in presets:
+            if p['name'] == name:
+                return p['text']
+        return presets[0]['text'] if presets else ""
+
+    def std_preset_for_group(self, group):
+        """The preset a category starts with; anything unmapped gets the first."""
+        names = self.std_preset_names()
+        chosen = (self.settings.get('standardTextByGroup') or {}).get(group)
+        return chosen if chosen in names else (names[0] if names else "")
+
+    def append_std_text(self, description, std_text):
+        std_text = (std_text or "").strip()
+        description = (description or "").strip()
+        if not std_text:
+            return description
+        return f"{description}\n\n{std_text}" if description else std_text
 
     def filename_safe(self, text, limit=40):
         """Product names contain slashes, commas and ampersands, none of which
@@ -409,15 +472,25 @@ class ProductAdminApp:
         std_frame = ttk.LabelFrame(main_frame, text="Standard Text", padding=10)
         std_frame.pack(fill='x', pady=(0, 10))
         
+        std_row = ttk.Frame(std_frame)
+        std_row.pack(fill='x')
         self.include_std_var = tk.BooleanVar(value=self.settings.get('includeStandardTextByDefault', True))
-        ttk.Checkbutton(std_frame, text="Include standard text in description", 
-                       variable=self.include_std_var).pack(anchor='w')
-        
-        ttk.Label(std_frame, text="(Edit standard text in Settings tab)", 
-                  foreground='gray', font=('Helvetica', 8)).pack(anchor='w')
-        
-        # Preview of standard text
-        self.std_preview = scrolledtext.ScrolledText(std_frame, width=50, height=4, state='disabled')
+        ttk.Checkbutton(std_row, text="Include standard text in description",
+                       variable=self.include_std_var).pack(side='left')
+        ttk.Label(std_row, text="Preset:").pack(side='left', padx=(16, 4))
+        # Follows the category, but can be overridden for this one product.
+        self.std_preset_var = tk.StringVar(value=self.std_preset_for_group(self.group_var.get()))
+        self.std_preset_combo = ttk.Combobox(std_row, textvariable=self.std_preset_var, state='readonly',
+                                             width=22, values=self.std_preset_names())
+        self.std_preset_combo.pack(side='left')
+        self.std_preset_combo.bind('<<ComboboxSelected>>', lambda e: self.update_std_preview())
+
+        ttk.Label(std_frame, foreground='gray', font=('Helvetica', 8),
+                  text="Chosen by category. Pick another, or edit the text below for this product only. "
+                       "Presets are edited in the Settings tab.").pack(anchor='w', pady=(4, 0))
+
+        # Editable: whatever is in this box is what gets added.
+        self.std_preview = scrolledtext.ScrolledText(std_frame, width=50, height=4)
         self.std_preview.pack(fill='x', pady=(5, 0))
         self.update_std_preview()
         
@@ -454,7 +527,7 @@ class ProductAdminApp:
         ttk.Label(main_frame, textvariable=self.item_id_var, font=('Courier', 9), foreground='green').pack(anchor='w', pady=(0, 10))
         
         self.name_entry.bind('<KeyRelease>', self.update_folder_preview)
-        self.group_combo.bind('<<ComboboxSelected>>', self.update_item_id_preview)
+        self.group_combo.bind('<<ComboboxSelected>>', self.on_add_group_changed)
         
         btn_frame = ttk.Frame(main_frame)
         btn_frame.pack(fill='x', pady=20)
@@ -465,10 +538,19 @@ class ProductAdminApp:
         ttk.Label(main_frame, textvariable=self.add_status_var, foreground='gray').pack(anchor='w')
     
     def update_std_preview(self):
+        """Load the chosen preset into the box, discarding any one-off edits."""
         self.std_preview.config(state='normal')
         self.std_preview.delete("1.0", tk.END)
-        self.std_preview.insert("1.0", self.settings.get('standardText', DEFAULT_STANDARD_TEXT))
-        self.std_preview.config(state='disabled')
+        self.std_preview.insert("1.0", self.std_text_for(self.std_preset_var.get()))
+
+    def on_add_group_changed(self, event=None):
+        self.update_item_id_preview()
+        preset = self.std_preset_for_group(self.group_var.get())
+        # Only swap the text when the category actually wants a different
+        # preset, so edits survive moving between two pendant categories.
+        if preset != self.std_preset_var.get():
+            self.std_preset_var.set(preset)
+            self.update_std_preview()
     
     def update_folder_preview(self, event=None):
         name = self.name_entry.get()
@@ -510,11 +592,7 @@ class ProductAdminApp:
         
         # Add standard text if checked
         if self.include_std_var.get():
-            std_text = self.settings.get('standardText', DEFAULT_STANDARD_TEXT)
-            if description:
-                description = description + "\n\n" + std_text
-            else:
-                description = std_text
+            description = self.append_std_text(description, self.std_preview.get("1.0", tk.END))
         
         folder_path = os.path.join(PENDANTS_FOLDER, slug)
         os.makedirs(folder_path, exist_ok=True)
@@ -551,12 +629,17 @@ class ProductAdminApp:
         self.add_status_var.set(f"Added: {name} ({item_id})")
         self.refresh_product_list()
         self.update_item_id_preview()
+        self.update_std_preview()   # one-off edits were for that product only
         
         try:
             os.startfile(folder_path)
         except OSError:
             pass   # folder will still be there; not worth interrupting for
     
+    def on_batch_group_changed(self, event=None):
+        self.batch_std_preset_var.set(self.std_preset_for_group(self.batch_group_var.get()))
+        self.batch_refresh_preview()
+
     def open_pendants_folder(self):
         os.makedirs(PENDANTS_FOLDER, exist_ok=True)
         os.startfile(PENDANTS_FOLDER)
@@ -591,7 +674,7 @@ class ProductAdminApp:
         self.batch_group_combo['values'] = self.data['groups']
         if self.data['groups']: self.batch_group_combo.current(0)
         self.batch_group_combo.pack(side='left', padx=5)
-        self.batch_group_combo.bind('<<ComboboxSelected>>', lambda e: self.batch_refresh_preview())
+        self.batch_group_combo.bind('<<ComboboxSelected>>', self.on_batch_group_changed)
         
         # Price
         price_row = ttk.Frame(settings_frame)
@@ -626,10 +709,17 @@ class ProductAdminApp:
         self.batch_desc_text = scrolledtext.ScrolledText(desc_row, width=40, height=3)
         self.batch_desc_text.pack(side='left', padx=5)
         
-        # Standard text checkbox
+        # Standard text: checkbox plus preset, following the batch's category
+        std_row = ttk.Frame(settings_frame)
+        std_row.pack(fill='x', pady=5)
         self.batch_include_std_var = tk.BooleanVar(value=self.settings.get('includeStandardTextByDefault', True))
-        ttk.Checkbutton(settings_frame, text="Include standard text in description",
-                       variable=self.batch_include_std_var).pack(anchor='w', pady=5)
+        ttk.Checkbutton(std_row, text="Include standard text in description",
+                       variable=self.batch_include_std_var).pack(side='left')
+        ttk.Label(std_row, text="Preset:").pack(side='left', padx=(16, 4))
+        self.batch_std_preset_var = tk.StringVar(value=self.std_preset_for_group(self.batch_group_var.get()))
+        self.batch_std_preset_combo = ttk.Combobox(std_row, textvariable=self.batch_std_preset_var,
+                                                   state='readonly', width=22, values=self.std_preset_names())
+        self.batch_std_preset_combo.pack(side='left')
 
         # Sale flags applied to every product in the batch
         flag_row = ttk.Frame(settings_frame)
@@ -766,8 +856,7 @@ class ProductAdminApp:
         base_desc = self.batch_desc_text.get("1.0", tk.END).strip()
         
         if self.batch_include_std_var.get():
-            std_text = self.settings.get('standardText', DEFAULT_STANDARD_TEXT)
-            description = (base_desc + "\n\n" + std_text) if base_desc else std_text
+            description = self.append_std_text(base_desc, self.std_text_for(self.batch_std_preset_var.get()))
         else:
             description = base_desc
         
@@ -1701,13 +1790,12 @@ class ProductAdminApp:
         btn_frame = ttk.Frame(frame)
         btn_frame.pack(fill='x')
         
+        preset_var = tk.StringVar(value=self.std_preset_for_group(product.get('group', '')))
+
         def append_std():
-            std_text = self.settings.get('standardText', DEFAULT_STANDARD_TEXT)
-            current = desc_text.get("1.0", tk.END).strip()
-            if current:
-                desc_text.insert(tk.END, "\n\n" + std_text)
-            else:
-                desc_text.insert("1.0", std_text)
+            text = self.append_std_text(desc_text.get("1.0", tk.END), self.std_text_for(preset_var.get()))
+            desc_text.delete("1.0", tk.END)
+            desc_text.insert("1.0", text)
         
         def save():
             product['description'] = desc_text.get("1.0", tk.END).strip()
@@ -1715,6 +1803,8 @@ class ProductAdminApp:
             messagebox.showinfo("Done", "Description updated")
         
         ttk.Button(btn_frame, text="Append Standard Text", command=append_std).pack(side='left')
+        ttk.Combobox(btn_frame, textvariable=preset_var, state='readonly', width=18,
+                     values=self.std_preset_names()).pack(side='left', padx=6)
         ttk.Button(btn_frame, text="Save", command=save).pack(side='right')
     
     def get_selected_products(self):
@@ -1872,8 +1962,8 @@ class ProductAdminApp:
 
     def standard_details_for(self, product):
         """What a product shows when it has no bullets of its own."""
-        if product.get('group') in NO_STOCK_DETAILS_GROUPS:
-            return []
+        if product.get('group') in KNIFE_DETAILS_GROUPS:
+            return list(KNIFE_DETAILS)
         return list(DEFAULT_DETAILS)
 
     def edit_details(self):
@@ -4021,25 +4111,54 @@ class ProductAdminApp:
         
         ttk.Label(main_frame, text="Settings", font=('Helvetica', 16, 'bold')).pack(pady=(0, 20))
         
-        # Standard text section
-        std_frame = ttk.LabelFrame(main_frame, text="Standard Product Description Text", padding=15)
-        std_frame.pack(fill=tk.BOTH, expand=True, pady=10)
-        
-        ttk.Label(std_frame, text="This text can be automatically appended to product descriptions:").pack(anchor='w')
-        
-        self.settings_std_text = scrolledtext.ScrolledText(std_frame, width=60, height=12)
-        self.settings_std_text.pack(fill=tk.BOTH, expand=True, pady=10)
-        self.settings_std_text.insert("1.0", self.settings.get('standardText', DEFAULT_STANDARD_TEXT))
-        
+        # Standard text presets
+        std_frame = ttk.LabelFrame(main_frame, text="Standard Description Text", padding=12)
+        std_frame.pack(fill='x', pady=(0, 8))
+        ttk.Label(std_frame, foreground='gray', wraplength=640, justify='left',
+                  text="Presets that can be added to the end of a description. Each category starts "
+                       "with the one chosen below; any preset can still be picked, and edited, when "
+                       "adding a product.").pack(anchor='w', pady=(0, 6))
+
+        pick = ttk.Frame(std_frame)
+        pick.pack(fill='x')
+        ttk.Label(pick, text="Preset:").pack(side='left')
+        self.settings_preset_var = tk.StringVar(value=self.std_preset_names()[0])
+        self.settings_preset_combo = ttk.Combobox(pick, textvariable=self.settings_preset_var, state='readonly',
+                                                  width=26, values=self.std_preset_names())
+        self.settings_preset_combo.pack(side='left', padx=6)
+        self.settings_preset_combo.bind('<<ComboboxSelected>>', self.on_settings_preset_changed)
+        ttk.Button(pick, text="New...", command=self.new_std_preset).pack(side='left', padx=3)
+        ttk.Button(pick, text="Rename...", command=self.rename_std_preset).pack(side='left', padx=3)
+        ttk.Button(pick, text="Delete", command=self.delete_std_preset).pack(side='left', padx=3)
+
+        self.settings_std_text = scrolledtext.ScrolledText(std_frame, width=60, height=9)
+        self.settings_std_text.pack(fill='x', pady=6)
+        self._settings_editing = self.settings_preset_var.get()
+        self.settings_std_text.insert("1.0", self.std_text_for(self._settings_editing))
+
+        groups_frame = ttk.LabelFrame(std_frame, text="Preset each category starts with", padding=6)
+        groups_frame.pack(fill='x')
+        self.settings_group_preset_vars = {}
+        self.settings_group_combos = {}
+        for group in self.data['groups']:
+            row = ttk.Frame(groups_frame)
+            row.pack(fill='x', pady=1)
+            ttk.Label(row, text=group, width=30).pack(side='left')
+            var = tk.StringVar(value=self.std_preset_for_group(group))
+            combo = ttk.Combobox(row, textvariable=var, state='readonly', width=26,
+                                 values=self.std_preset_names())
+            combo.pack(side='left')
+            self.settings_group_preset_vars[group] = var
+            self.settings_group_combos[group] = combo
+
         self.default_include_var = tk.BooleanVar(value=self.settings.get('includeStandardTextByDefault', True))
-        ttk.Checkbutton(std_frame, text="Include standard text by default when adding products", 
-                       variable=self.default_include_var).pack(anchor='w')
-        
+        ttk.Checkbutton(std_frame, text="Include standard text by default when adding products",
+                       variable=self.default_include_var).pack(anchor='w', pady=(6, 0))
+
         btn_frame = ttk.Frame(std_frame)
-        btn_frame.pack(fill='x', pady=10)
-        
+        btn_frame.pack(fill='x', pady=(6, 0))
         ttk.Button(btn_frame, text="Save Settings", command=self.save_settings_tab).pack(side='left', padx=5)
-        ttk.Button(btn_frame, text="Reset to Default", command=self.reset_std_text).pack(side='left', padx=5)
+        ttk.Button(btn_frame, text="Reset Preset to Original", command=self.reset_std_text).pack(side='left', padx=5)
         
         # Sale flag names
         flag_frame = ttk.LabelFrame(main_frame, text="Sale Flag Names", padding=15)
@@ -4068,12 +4187,105 @@ class ProductAdminApp:
         ttk.Label(info_frame, text=f"Data file: {DATA_FILE}", font=('Courier', 8), foreground='gray').pack(anchor='w')
         ttk.Label(info_frame, text=f"Settings file: {SETTINGS_FILE}", font=('Courier', 8), foreground='gray').pack(anchor='w')
     
+    def _stash_settings_preset(self):
+        """Hold on to edits to the preset on screen before switching away."""
+        name = getattr(self, '_settings_editing', None)
+        if not name:
+            return
+        text = self.settings_std_text.get("1.0", tk.END).strip()
+        for p in self.std_presets():
+            if p['name'] == name:
+                p['text'] = text
+
+    def _show_settings_preset(self, name):
+        self._settings_editing = name
+        self.settings_preset_var.set(name)
+        self.settings_std_text.delete("1.0", tk.END)
+        self.settings_std_text.insert("1.0", self.std_text_for(name))
+
+    def on_settings_preset_changed(self, event=None):
+        self._stash_settings_preset()
+        self._show_settings_preset(self.settings_preset_var.get())
+
+    def _refresh_preset_choices(self):
+        names = self.std_preset_names()
+        self.settings_preset_combo['values'] = names
+        for combo in self.settings_group_combos.values():
+            combo['values'] = names
+        self.std_preset_combo['values'] = names
+        self.batch_std_preset_combo['values'] = names
+
+    def _replace_preset_everywhere(self, old, new):
+        """Point everything that used preset `old` at `new` instead."""
+        mapping = self.settings.setdefault('standardTextByGroup', {})
+        for group, name in list(mapping.items()):
+            if name == old:
+                mapping[group] = new
+        for var in self.settings_group_preset_vars.values():
+            if var.get() == old:
+                var.set(new)
+        for var in (self.std_preset_var, self.batch_std_preset_var):
+            if var.get() == old:
+                var.set(new)
+
+    def new_std_preset(self):
+        name = (simpledialog.askstring("New preset", "Name for the new preset:", parent=self.root) or "").strip()
+        if not name:
+            return
+        if name in self.std_preset_names():
+            return messagebox.showerror("Error", f"There is already a preset called {name}.")
+        self._stash_settings_preset()
+        # Starts as a copy of whatever is on screen, which is usually the
+        # quickest place to begin from.
+        self.std_presets().append({"name": name, "text": self.settings_std_text.get("1.0", tk.END).strip()})
+        self._refresh_preset_choices()
+        self._show_settings_preset(name)
+        self.save_settings()
+
+    def rename_std_preset(self):
+        old = self.settings_preset_var.get()
+        new = (simpledialog.askstring("Rename preset", f"New name for {old}:", initialvalue=old,
+                                      parent=self.root) or "").strip()
+        if not new or new == old:
+            return
+        if new in self.std_preset_names():
+            return messagebox.showerror("Error", f"There is already a preset called {new}.")
+        self._stash_settings_preset()
+        for p in self.std_presets():
+            if p['name'] == old:
+                p['name'] = new
+        self._replace_preset_everywhere(old, new)
+        self._refresh_preset_choices()
+        self._show_settings_preset(new)
+        self.save_settings()
+
+    def delete_std_preset(self):
+        name = self.settings_preset_var.get()
+        presets = self.std_presets()
+        if len(presets) <= 1:
+            return messagebox.showerror("Error", "Keep at least one preset.")
+        if not messagebox.askyesno("Delete preset", f"Delete the {name} preset?"):
+            return
+        self.settings['standardTextPresets'] = [p for p in presets if p['name'] != name]
+        fallback = self.std_preset_names()[0]
+        self._replace_preset_everywhere(name, fallback)
+        self._refresh_preset_choices()
+        self._show_settings_preset(fallback)
+        self.update_std_preview()
+        self.save_settings()
+
     def save_settings_tab(self):
-        self.settings['standardText'] = self.settings_std_text.get("1.0", tk.END).strip()
+        self._stash_settings_preset()
+        self.settings['standardTextByGroup'] = {g: v.get() for g, v in self.settings_group_preset_vars.items()}
         self.settings['includeStandardTextByDefault'] = self.default_include_var.get()
+        self.settings.pop('standardText', None)   # superseded by the presets
         self.save_settings()
         self.include_std_var.set(self.default_include_var.get())
+        self.batch_include_std_var.set(self.default_include_var.get())
+        # Pick up any change for the categories currently chosen elsewhere.
+        self.std_preset_var.set(self.std_preset_for_group(self.group_var.get()))
         self.update_std_preview()
+        self.batch_std_preset_var.set(self.std_preset_for_group(self.batch_group_var.get()))
         messagebox.showinfo("Done", "Settings saved!")
     
     def save_flag_names(self):
@@ -4103,9 +4315,14 @@ class ProductAdminApp:
         messagebox.showinfo("Done", "Flag names saved!")
 
     def reset_std_text(self):
-        if messagebox.askyesno("Confirm", "Reset standard text to default?"):
+        name = self.settings_preset_var.get()
+        original = BUILTIN_STD_PRESETS.get(name)
+        if original is None:
+            return messagebox.showinfo("Nothing to reset to",
+                                       f"{name} is a preset you made, so it has no original version.")
+        if messagebox.askyesno("Confirm", f"Put the {name} preset back to its original text?"):
             self.settings_std_text.delete("1.0", tk.END)
-            self.settings_std_text.insert("1.0", DEFAULT_STANDARD_TEXT)
+            self.settings_std_text.insert("1.0", original)
 
 
 def main():
