@@ -1501,6 +1501,19 @@
       "created": "2026-09-30",
       "size": "3cm or 1.2 inch",
       "featured": true
+    },
+    {
+      "id": "fractal-field-oknife-utility-blade-titanium-handles",
+      "name": "Fractal Field - OKnife Utility blade Titanium Handles",
+      "description": "Button lock Utility blade holder folding knife by OKnife with fully engraved handle.",
+      "price": 140.0,
+      "group": "Knives & Tools",
+      "folder": "fractal-field-oknife-utility-blade-titanium-handles",
+      "status": "available",
+      "itemId": "X0009",
+      "created": "2026-10-03",
+      "size": "8cm or 3.2\" closed, 14cm 5.6\" open",
+      "featured": true
     }
   ],
   "previousWork": [
