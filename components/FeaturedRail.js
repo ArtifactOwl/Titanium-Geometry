@@ -113,39 +113,63 @@ export default function FeaturedRail({ products, rotate = true, pinned = PINNED_
   const onPointerDown = (e) => {
     // Let the browser handle touch scrolling; only take over for mouse drags.
     if (e.pointerType === "touch") return;
+    // Right and middle buttons keep their usual behaviour (context menu,
+    // open in new tab).
+    if (e.button !== 0) return;
     const el = railRef.current;
     if (!el) return;
-    drag.current = { active: true, startX: e.clientX, startScroll: el.scrollLeft, moved: 0 };
-    setDragging(true);
-    // Capture keeps the drag alive if the pointer wanders outside the rail.
-    try {
-      el.setPointerCapture(e.pointerId);
-      drag.current.pointerId = e.pointerId;
-    } catch {
-      /* capture is a nicety; dragging still works without it */
-    }
+    // Nothing is captured yet. Capturing the pointer on press makes Chrome
+    // deliver the click to the rail instead of the card under it, so no card
+    // could be opened by clicking it. Capture only once this is a real drag.
+    drag.current = {
+      active: true,
+      captured: false,
+      startX: e.clientX,
+      startScroll: el.scrollLeft,
+      moved: 0,
+      pointerId: e.pointerId,
+    };
   };
 
   const onPointerMove = (e) => {
     const el = railRef.current;
     if (!el || !drag.current.active) return;
+    // Released outside the rail before it became a drag, so no pointerup
+    // reached us. Don't carry on dragging with the button up.
+    if (e.buttons === 0) {
+      endDrag();
+      return;
+    }
     const dx = e.clientX - drag.current.startX;
     drag.current.moved = Math.max(drag.current.moved, Math.abs(dx));
+    if (drag.current.moved <= DRAG_THRESHOLD) return;   // still a click
+
+    if (!drag.current.captured) {
+      drag.current.captured = true;
+      setDragging(true);
+      // Now it's a drag: capture keeps it alive if the pointer wanders out
+      // of the rail.
+      try {
+        el.setPointerCapture(drag.current.pointerId);
+      } catch {
+        /* capture is a nicety; dragging still works without it */
+      }
+    }
     el.scrollLeft = drag.current.startScroll - dx;
   };
 
   const endDrag = () => {
     if (!drag.current.active) return;
     const el = railRef.current;
-    if (el && drag.current.pointerId != null) {
+    if (el && drag.current.captured && drag.current.pointerId != null) {
       try {
         el.releasePointerCapture(drag.current.pointerId);
       } catch {
         /* already released */
       }
-      drag.current.pointerId = null;
     }
     drag.current.active = false;
+    drag.current.captured = false;
     setDragging(false);
     updateArrows();
   };
