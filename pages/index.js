@@ -38,7 +38,9 @@ export default function Home() {
 
       {/* Hero */}
       <main style={mainStyle}>
-        <section style={heroStyle}>
+        {/* Two columns on desktop (logo beside the text) so the featured rail
+            starts above the fold; stacked on phones. Layout lives in _app.js. */}
+        <section className="home-hero">
           {/* Rendered to PNG from the logo SVG: the wordmark is set in Sylfaen,
               a Windows-only font, so the SVG mis-renders on phones and Macs. */}
           <img
@@ -46,53 +48,35 @@ export default function Home() {
             alt="Titanium Geometry"
             width={1500}
             height={940}
-            style={heroLogoStyle}
+            className="home-hero-logo"
           />
-          <h1 style={h1Style}>
-            One-of-a-Kind Titanium Pendants
-          </h1>
-          <p style={subtitleStyle}>
-            Every piece is individually laser engraved, cut, and anodized — made
-            once, then never repeated. The colors come from the metal itself, so
-            they never crack, chip, or fade.
-          </p>
+          <div className="home-hero-text">
+            <h1 style={h1Style}>
+              One-of-a-Kind Titanium Pendants
+            </h1>
+            <p style={subtitleStyle}>
+              Every piece is individually laser engraved, cut, and anodized — made
+              once, then never repeated. The colors come from the metal itself, so
+              they never crack, chip, or fade.
+            </p>
 
-          <ul style={heroFactsStyle}>
-            {[
-              { what: "Pendants", href: "/wearables" },
-              { what: "Keychains", href: "/wearables" },
-              { what: "Knife Handles" },
-              { what: "Tools" },
-            ].map(({ what, href }, i) => (
-              <li key={what} style={heroFactStyle}>
-                {i > 0 && <span style={heroSeparatorStyle}>·</span>}
-                {href ? (
-                  <Link href={href} style={heroFactLinkStyle}>
-                    {what}
-                  </Link>
-                ) : (
-                  what
-                )}
-              </li>
-            ))}
-          </ul>
-          <p style={heroMaterialsStyle}>
-            Titanium · Brass · Steel · Tungsten
-          </p>
+            <nav className="hero-cats" aria-label="Shop by type">
+              {[
+                { what: "Pendants", href: "/wearables" },
+                { what: "Keychains", href: "/wearables" },
+                { what: "Knives & Tools", href: "/knives" },
+              ].map(({ what, href }) => (
+                <Link key={what} href={href} className="hero-cat">
+                  {what} <span aria-hidden="true">→</span>
+                </Link>
+              ))}
+            </nav>
 
-          <div style={heroCtaStyle}>
-            <Link href="/shop" style={btnPrimaryStyle}>Shop Available Pieces</Link>
-            <Link href="/commission" style={btnOutlineStyle}>Custom Items &amp; Designs</Link>
+            <div className="hero-ctas">
+              <Link href="/shop" style={btnPrimaryStyle}>Shop Available Pieces</Link>
+              <Link href="/commission" style={btnOutlineStyle}>Custom Items &amp; Designs</Link>
+            </div>
           </div>
-
-          <p style={heroContactStyle}>
-            <a href="https://facebook.com/TitaniumGeometry" style={heroContactLinkStyle}
-               target="_blank" rel="noopener noreferrer">facebook.com/TitaniumGeometry</a>
-            {" · "}
-            <a href="mailto:titaniumgeometry@gmail.com" style={heroContactLinkStyle}>
-              titaniumgeometry@gmail.com
-            </a>
-          </p>
         </section>
 
         {featured.length > 0 && (
@@ -107,6 +91,15 @@ export default function Home() {
             </Link>
           </section>
         )}
+
+        <p style={heroContactStyle}>
+          <a href="https://facebook.com/TitaniumGeometry" style={heroContactLinkStyle}
+             target="_blank" rel="noopener noreferrer">facebook.com/TitaniumGeometry</a>
+          {" · "}
+          <a href="mailto:titaniumgeometry@gmail.com" style={heroContactLinkStyle}>
+            titaniumgeometry@gmail.com
+          </a>
+        </p>
 
         {/* Shop by Category */}
         <section style={sectionStyle}>
@@ -256,9 +249,6 @@ const pageStyle = {
   flexDirection: "column",
 };
 
-
-
-
 const mainStyle = {
   flex: 1,
   padding: "2rem",
@@ -270,9 +260,8 @@ const mainStyle = {
 const h1Style = {
   fontSize: "1.9rem",
   lineHeight: 1.2,
-  textAlign: "center",
   fontWeight: 600,
-  margin: "0 0 0.9rem",
+  margin: "0 0 0.75rem",
 };
 
 const h2Style = {
@@ -280,21 +269,9 @@ const h2Style = {
   marginBottom: "1rem",
 };
 
-const heroStyle = {
-  textAlign: "center",
-  padding: "0.5rem 0 2.5rem",
-};
-
-const heroLogoStyle = {
-  width: "100%",
-  maxWidth: "560px",
-  height: "auto",
-  margin: "0 auto 1.25rem",
-  display: "block",
-};
-
 const heroContactStyle = {
-  marginTop: "1.5rem",
+  margin: "-1.5rem 0 3rem",
+  textAlign: "center",
   color: "#6b7280",
   fontSize: "0.9rem",
 };
@@ -305,55 +282,11 @@ const heroContactLinkStyle = {
 };
 
 const subtitleStyle = {
-  textAlign: "center",
   color: "#4b5563",
   fontSize: "1.1rem",
   lineHeight: 1.6,
   maxWidth: "620px",
-  margin: "0 auto 1.5rem",
-};
-
-const heroFactsStyle = {
-  listStyle: "none",
-  display: "flex",
-  justifyContent: "center",
-  flexWrap: "wrap",
-  gap: "0.15rem 0.75rem",
-  padding: 0,
-  margin: "0 0 0.35rem",
-  letterSpacing: "0.03em",
-};
-
-// Deliberately not pill-shaped: a rounded border reads as a button, and these
-// are a description of what gets made rather than links to anywhere.
-const heroFactStyle = {
-  fontSize: "0.9rem",
-  color: "#374151",
-};
-
-const heroSeparatorStyle = { color: "#d1d5db", marginRight: "0.75rem" };
-
-// Underlined rather than pill-shaped: these are links in a line of text, not
-// buttons, and the last round of styling made that ambiguous.
-const heroFactLinkStyle = {
-  color: "#374151",
-  textDecoration: "underline",
-  textUnderlineOffset: "3px",
-  textDecorationColor: "#9ca3af",
-};
-
-const heroMaterialsStyle = {
-  color: "#6b7280",
-  fontSize: "0.9rem",
-  letterSpacing: "0.03em",
-  margin: "0 0 1.75rem",
-};
-
-const heroCtaStyle = {
-  display: "flex",
-  justifyContent: "center",
-  gap: "1rem",
-  flexWrap: "wrap",
+  margin: "0 0 1.25rem",
 };
 
 const railHintStyle = {

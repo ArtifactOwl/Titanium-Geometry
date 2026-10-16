@@ -66,6 +66,61 @@ const globalStyles = `
     .featured-rail > * { flex-basis: calc((100% - 1rem) / 2); }
   }
 
+  /* Homepage hero. Stacked and centred on phones; on desktop the logo sits
+     beside the text so the featured rail is visible without scrolling. */
+  .home-hero {
+    text-align: center;
+    padding: 0 0 2rem;
+  }
+  .home-hero-logo {
+    display: block;
+    width: 100%;
+    max-width: 480px;
+    height: auto;
+    margin: 0 auto 1rem;
+  }
+  .hero-cats {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0 0 1.25rem;
+  }
+  .hero-cat {
+    display: inline-block;
+    padding: 0.7rem 1.4rem;
+    border: 2px solid #9ca3af;
+    border-radius: 8px;
+    background: #f9fafb;
+    color: #111827;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .hero-cat:hover,
+  .hero-cat:focus-visible {
+    border-color: #111827;
+    background: #f3f4f6;
+  }
+  .hero-ctas {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  @media (min-width: 900px) {
+    .home-hero {
+      display: grid;
+      grid-template-columns: minmax(280px, 400px) 1fr;
+      align-items: center;
+      gap: 2.5rem;
+      text-align: left;
+      padding: 0 0 2rem;
+    }
+    .home-hero-logo { margin: 0; }
+    .hero-cats, .hero-ctas { justify-content: flex-start; }
+  }
   /* Responsive adjustments */
   @media (max-width: 768px) {
     .product-layout {
