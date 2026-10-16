@@ -999,6 +999,11 @@ class ProductAdminApp:
         self.product_tree.column(WEAR_COLUMN, width=72, anchor='center', stretch=False)
         self.product_tree.bind('<Button-1>', self.on_product_tree_click)
         self.product_tree.bind('<<TreeviewSelect>>', self.on_product_selected)
+        # Click a heading to sort by it; click again to reverse. None keeps
+        # the file's own order until a heading is clicked.
+        self.manage_sort = None            # (column, descending)
+        for col in columns:
+            self.product_tree.heading(col, command=lambda c=col: self.sort_products_by(c))
 
         # Photo of whatever is selected, so it's obvious which piece a row is
         # before marking it sold or changing its price.
@@ -1395,6 +1400,9 @@ class ProductAdminApp:
         if terms:
             products = [p for p in products if self.product_matches_search(p, terms)]
 
+        products = self.sorted_for_manage(products)
+        self.update_sort_headings()
+
         for product in products:
             status = product.get('status', 'available').upper()
             has_video = "✓" if product.get('youtubeId') else ""
@@ -1425,6 +1433,71 @@ class ProductAdminApp:
         self.manage_status_var.set(
             f"Showing {shown} of {total}" if shown != total else ""
         )
+
+    # ---------- Sorting ----------
+    def manage_heading_label(self, col):
+        """A Manage Products heading's text, without any sort arrow."""
+        if col in FLAG_KEYS:
+            return self.flag_label(col)
+        if col == 'featured':
+            return 'Featured'
+        if col == WEAR_COLUMN:
+            return 'Pend/Key'
+        for s in self.ad_sets():
+            if s['flag'] == col:
+                return s.get('label', col)
+        return col.replace('itemId', 'Item #').title()
+
+    def update_sort_headings(self):
+        """Put ▲ or ▼ on the sorted column and plain labels on the rest."""
+        sort_col, descending = self.manage_sort or (None, False)
+        for col in (str(c) for c in self.product_tree['columns']):
+            label = self.manage_heading_label(col)
+            if col == sort_col:
+                label += " ▼" if descending else " ▲"
+            self.product_tree.heading(col, text=label)
+
+    def sort_products_by(self, col):
+        """Heading click: sort by that column, or reverse it if already sorted by it."""
+        if self.manage_sort and self.manage_sort[0] == col:
+            self.manage_sort = (col, not self.manage_sort[1])
+        else:
+            self.manage_sort = (col, False)
+        self.refresh_product_list(reload=False)
+
+    def manage_sort_key(self, product, col):
+        """What a column sorts on. Ticked boxes and filled-in values come first
+        on the first click; prices sort by the number, not the text."""
+        if col == 'itemId':
+            item_id = product.get('itemId') or ''
+            return (item_id == '', item_id)
+        if col == 'price':
+            try:
+                return float(product.get('salePrice') or product.get('price') or 0)
+            except (TypeError, ValueError):
+                return 0.0
+        if col == 'video':
+            return 0 if product.get('youtubeId') else 1
+        if col == 'status':
+            return product.get('status', 'available')
+        if col in FLAG_KEYS:
+            return 0 if col in self.product_flags(product) else 1
+        if col == 'featured':
+            return 0 if product.get('featured') else 1
+        if col == WEAR_COLUMN:
+            return 0 if self.offers_wear_choice(product) else 1
+        if col in self.ad_set_flags():
+            return 0 if product.get(col) else 1
+        return str(product.get(col, '')).casefold()
+
+    def sorted_for_manage(self, products):
+        if not self.manage_sort:
+            return products
+        col, descending = self.manage_sort
+        # Name as a tie-breaker, so rows that sort equal (every unticked box,
+        # say) still come out in a predictable order.
+        products = sorted(products, key=lambda p: p.get('name', '').casefold())
+        return sorted(products, key=lambda p: self.manage_sort_key(p, col), reverse=descending)
 
     # ---------- Preview ----------
     def on_product_selected(self, event=None):
