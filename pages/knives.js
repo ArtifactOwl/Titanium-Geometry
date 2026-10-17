@@ -14,6 +14,7 @@ import ProductCard from "../components/ProductCard";
 import Testimonials from "../components/Testimonials";
 import { effectivePrice } from "../lib/pricing";
 import { SORT_OPTIONS, filterProducts, sortProducts } from "../lib/search";
+import { isBundle, touchesGroups } from "../lib/bundles";
 
 const GROUP = "Knives & Tools";
 
@@ -22,7 +23,10 @@ export default function KnivesPage() {
   const [sortKey, setSortKey] = useState("newest");
 
   const { available, sold } = useMemo(() => {
-    const mine = products.products.filter((p) => p.group === GROUP);
+    // Bundles with a knife or tool in them belong here too.
+    const mine = products.products.filter(
+      (p) => p.group === GROUP || (isBundle(p) && touchesGroups(p, [GROUP], products.products))
+    );
     // Newest first, so the gallery below opens on recent work rather than the
     // first thing ever made.
     const newestFirst = (a, b) =>
@@ -30,7 +34,8 @@ export default function KnivesPage() {
       String(b.itemId || "").localeCompare(String(a.itemId || ""));
     return {
       available: mine.filter((p) => p.status === "available" || !p.status),
-      sold: mine.filter((p) => p.status === "sold").sort(newestFirst),
+      // A sold bundle would only repeat pieces already shown as sold.
+      sold: mine.filter((p) => p.status === "sold" && !isBundle(p)).sort(newestFirst),
     };
   }, []);
 

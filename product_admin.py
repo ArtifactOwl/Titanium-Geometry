@@ -33,8 +33,14 @@ GROUP_PREFIXES = {
     "Molecules": "M",
     "Organic and Other Pendants": "O",
     "Judaic": "J",
+    "Bundles": "B",
 }
 DEFAULT_PREFIX = "X"
+
+# A bundle is an ordinary product in this category that also lists the ids of
+# the pieces it contains under "bundle". Mirrors BUNDLE_GROUP in lib/bundles.js.
+BUNDLE_GROUP = "Bundles"
+BUNDLE_COVER_PX = 1000      # each tile of the generated cover collage
 
 DEFAULT_STANDARD_TEXT = """Includes:
 • Titanium pendant with precision laser engraving
@@ -219,6 +225,7 @@ class ProductAdminApp:
             }
     
     def save_data(self):
+        self.sync_bundles()
         os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
         with open(DATA_FILE, 'w') as f:
             json.dump(self.data, f, indent=2)
@@ -1040,7 +1047,7 @@ class ProductAdminApp:
             [("Mark Sold", self.mark_sold), ("Mark Pending", self.mark_pending), ("Mark Available", self.mark_available), ("Delete", self.delete_product)],
             [("Rename", self.edit_name), ("Edit Price", self.edit_price), ("Edit Description", self.edit_description), ("Change Group", self.change_group), ("Open Images Folder", self.open_product_folder), ("Copy Link", self.copy_product_link)],
             [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous), ("Edit Flags", self.edit_flags), ("Edit Keywords", self.edit_keywords), ("Edit Size", self.edit_size), ("Edit Details", self.edit_details)],
-            [("Set Sale", self.set_product_sale), ("End Sale", self.end_product_sale)]
+            [("Set Sale", self.set_product_sale), ("End Sale", self.end_product_sale), ("Make Bundle", self.make_bundle)]
         ]):
             btn_frame = ttk.Frame(main_frame)
             btn_frame.pack(fill='x', pady=3)
@@ -1563,29 +1570,293 @@ class ProductAdminApp:
         return selection[0]
     
     def mark_sold(self):
-        pid = self.get_selected_product()
-        if not pid: return
-        for p in self.data['products']:
-            if p['id'] == pid: p['status'] = 'sold'; break
-        self.save_data(); self.refresh_product_list()
-        messagebox.showinfo("Done", "Product marked as SOLD")
-    
+        self.mark_status('sold')
+
     def mark_pending(self):
-        pid = self.get_selected_product()
-        if not pid: return
-        for p in self.data['products']:
-            if p['id'] == pid: p['status'] = 'pending'; break
-        self.save_data(); self.refresh_product_list()
-        messagebox.showinfo("Done", "Product marked as PENDING")
-    
+        self.mark_status('pending')
+
     def mark_available(self):
+        self.mark_status('available')
+
+    def mark_status(self, status):
         pid = self.get_selected_product()
         if not pid: return
-        for p in self.data['products']:
-            if p['id'] == pid: p['status'] = 'available'; break
+        product = next((p for p in self.data['products'] if p['id'] == pid), None)
+        if not product: return
+        carried = self.apply_status(product, status)
         self.save_data(); self.refresh_product_list()
-        messagebox.showinfo("Done", "Product marked as AVAILABLE")
-    
+        message = f"Product marked as {status.upper()}"
+        if carried:
+            message += f"\n\nAlso marked {status.upper()} (pieces in this bundle):\n" + \
+                "\n".join(f"  {m.get('itemId', '-')}  {m['name']}" for m in carried)
+        if product.get('bundle') and product.get('status') == 'unavailable':
+            message += "\n\nNote: a piece in this bundle is missing, so the bundle " \
+                       "still can't be bought."
+        messagebox.showinfo("Done", message)
+
+    # ---------- Bundles ----------
+    def is_bundle(self, product):
+        return bool(product) and isinstance(product.get('bundle'), list) and bool(product['bundle'])
+
+    def bundle_members(self, bundle):
+        by_id = {p['id']: p for p in self.data['products']}
+        return [by_id[i] for i in bundle.get('bundle', []) if i in by_id]
+
+    def apply_status(self, product, status):
+        """Set a product's status. For a bundle the pieces follow, since they
+        are the same physical items: selling the bundle sells every piece, a
+        hold on the bundle holds them, and putting it back frees them. Returns
+        the pieces that changed along with it."""
+        product['status'] = status
+        if not self.is_bundle(product):
+            return []
+        changed = []
+        if status == 'sold':
+            product['soldAsBundle'] = True
+        else:
+            product.pop('soldAsBundle', None)
+        for m in self.bundle_members(product):
+            current = m.get('status', 'available')
+            if status == 'sold':
+                new = 'sold'
+            elif status == 'pending':
+                new = 'pending' if current == 'available' else current
+            else:
+                new = 'available'
+            if new != current:
+                m['status'] = new
+                changed.append(m)
+        return changed
+
+    def sync_bundles(self):
+        """Work out each bundle's status from its pieces, so the site never
+        offers a set whose pieces have sold separately. Run on every save.
+
+        sold         the bundle itself sold (soldAsBundle)
+        unavailable  a piece sold on its own, or was deleted/moved away
+        pending      a piece is on hold
+        available    every piece is still for sale
+        Mirrors bundleStatus() in lib/bundles.js."""
+        by_id = {p['id']: p for p in self.data.get('products', [])}
+        for b in self.data.get('products', []):
+            if not self.is_bundle(b):
+                continue
+            members = [by_id.get(i) for i in b['bundle']]
+            if b.get('soldAsBundle'):
+                b['status'] = 'sold'
+            elif any(m is None or m.get('status') == 'sold' for m in members):
+                b['status'] = 'unavailable'
+            elif any(m.get('status') == 'pending' for m in members):
+                b['status'] = 'pending'
+            else:
+                b['status'] = 'available'
+
+    def rename_in_bundles(self, old_id, new_id):
+        """A piece's web address changed: keep every bundle pointing at it."""
+        for b in self.data['products']:
+            if self.is_bundle(b) and old_id in b['bundle']:
+                b['bundle'] = [new_id if i == old_id else i for i in b['bundle']]
+
+    def unique_slug(self, base):
+        slug, n = base, 2
+        taken = {p['id'] for p in self.data['products']}
+        while slug in taken:
+            slug = f"{base}-{n}"; n += 1
+        return slug
+
+    def make_bundle(self):
+        """Select two or more pieces (Ctrl/Shift click), then this makes a new
+        listing selling them together at one price. The pieces stay listed on
+        their own; each gets a "Part of a bundle" link on the site."""
+        ids = list(self.product_tree.selection())
+        pieces = [p for p in self.data['products'] if p['id'] in ids]
+        # Keep the order they appear in the list, which is what was selected.
+        pieces.sort(key=lambda p: ids.index(p['id']))
+        if len(pieces) < 2:
+            return messagebox.showwarning(
+                "Make Bundle", "Select two or more pieces first (Ctrl or Shift click in the list).")
+        if any(self.is_bundle(p) for p in pieces):
+            return messagebox.showwarning("Make Bundle", "A bundle can't contain another bundle.")
+        gone = [p for p in pieces if p.get('status', 'available') != 'available']
+        if gone:
+            return messagebox.showwarning(
+                "Make Bundle", "Every piece has to be available. Not available:\n" +
+                "\n".join(f"  {p.get('itemId', '-')}  {p['name']} ({p.get('status')})" for p in gone))
+
+        def price_of(p):
+            return float(p.get('salePrice') or p.get('price') or 0)
+        separately = round(sum(price_of(p) for p in pieces), 2)
+        suggested = max(5, int(round(separately * 0.9 / 5.0)) * 5)
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Make Bundle")
+        dialog.geometry("640x640")
+        dialog.transient(self.root); dialog.grab_set()
+        frame = ttk.Frame(dialog, padding=16)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(frame, text="Pieces in this bundle:", font=('Helvetica', 10, 'bold')).pack(anchor='w')
+        for p in pieces:
+            ttk.Label(frame, text=f"  {p.get('itemId', '-')}   {p['name']}   (${price_of(p):g}, {p.get('group', '')})"
+                      ).pack(anchor='w')
+        ttk.Label(frame, text=f"Bought separately: ${separately:g}", foreground='gray').pack(anchor='w', pady=(2, 10))
+
+        ttk.Label(frame, text="Bundle name:").pack(anchor='w')
+        default_name = " + ".join(p['name'] for p in pieces)
+        if len(pieces) > 3 or len(default_name) > 70:
+            default_name = f"{pieces[0]['name']} Set of {len(pieces)}"
+        name_var = tk.StringVar(value=default_name)
+        name_entry = ttk.Entry(frame, textvariable=name_var, width=70)
+        name_entry.pack(anchor='w', pady=(2, 8))
+        name_entry.focus_set(); name_entry.selection_range(0, tk.END)
+
+        price_row = ttk.Frame(frame); price_row.pack(anchor='w', fill='x')
+        ttk.Label(price_row, text="Bundle price: $").pack(side='left')
+        price_var = tk.StringVar(value=str(suggested))
+        ttk.Entry(price_row, textvariable=price_var, width=10).pack(side='left')
+        saving_var = tk.StringVar()
+        ttk.Label(price_row, textvariable=saving_var, foreground='#0a7').pack(side='left', padx=10)
+
+        def update_saving(*_):
+            try:
+                saving = separately - float(price_var.get())
+                saving_var.set(f"buyer saves ${saving:g}" if saving > 0 else
+                               "(no saving - priced at or above the pieces)")
+            except ValueError:
+                saving_var.set("")
+        price_var.trace_add('write', update_saving); update_saving()
+
+        ttk.Label(frame, text="Description:").pack(anchor='w', pady=(10, 0))
+        desc = scrolledtext.ScrolledText(frame, width=74, height=9, wrap=tk.WORD)
+        desc.pack(fill='both', expand=True, pady=(2, 8))
+        desc.insert("1.0", f"These {len(pieces)} pieces together, for less than buying them separately:\n\n" +
+                    "\n".join(f"• {p['name']} (Item #{p.get('itemId', '-')})" for p in pieces) +
+                    "\n\nEach piece is one of a kind and is also listed on its own.")
+
+        featured_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(frame, text="Featured", variable=featured_var).pack(anchor='w')
+
+        photos = []
+        photo_var = tk.StringVar(value="No group photos chosen - a cover will be made from the pieces' photos.")
+        def choose_photos():
+            from tkinter import filedialog
+            chosen = filedialog.askopenfilenames(
+                parent=dialog, title="Group photos for this bundle",
+                filetypes=[("Images", "*.jpg *.jpeg *.png"), ("All files", "*.*")])
+            if chosen:
+                photos[:] = list(chosen)
+                photo_var.set(f"{len(photos)} group photo(s) chosen - they lead the gallery, "
+                              "followed by each piece's own photo.")
+        photo_row = ttk.Frame(frame); photo_row.pack(anchor='w', fill='x', pady=(8, 0))
+        ttk.Button(photo_row, text="Add Group Photos...", command=choose_photos).pack(side='left')
+        ttk.Label(photo_row, textvariable=photo_var, foreground='gray', wraplength=430
+                  ).pack(side='left', padx=8)
+
+        def create():
+            name = name_var.get().strip()
+            if not name:
+                return messagebox.showerror("Error", "Give the bundle a name.", parent=dialog)
+            try:
+                price = float(price_var.get())
+            except ValueError:
+                return messagebox.showerror("Error", "Price must be a number.", parent=dialog)
+            slug = self.unique_slug(self.slugify(name) or "bundle")
+            folder = os.path.join(PENDANTS_FOLDER, slug)
+            os.makedirs(folder, exist_ok=True)
+            try:
+                made = self.write_bundle_photos(folder, photos, pieces)
+            except Exception as exc:
+                shutil.rmtree(folder, ignore_errors=True)
+                return messagebox.showerror("Error", f"Couldn't write the photos:\n{exc}", parent=dialog)
+
+            if BUNDLE_GROUP not in self.data['groups']:
+                self.data['groups'].append(BUNDLE_GROUP)
+            cats = self.data.setdefault('categoryImages', {})
+            if BUNDLE_GROUP not in cats and made:
+                cats[BUNDLE_GROUP] = f"/pendants/{slug}/1.jpg"
+
+            product = {"id": slug, "name": name,
+                       "description": desc.get("1.0", tk.END).strip(),
+                       "price": price, "group": BUNDLE_GROUP, "folder": slug,
+                       "status": "available",
+                       "itemId": self.generate_item_id(BUNDLE_GROUP),
+                       "created": datetime.now().strftime("%Y-%m-%d"),
+                       "bundle": [p['id'] for p in pieces]}
+            # The fitting choice only makes sense if something in it is worn.
+            if not any(self.offers_wear_choice(p) for p in pieces):
+                product["noWearChoice"] = True
+            if featured_var.get():
+                product["featured"] = True
+            self.data['products'].append(product)
+            self.save_data()
+            dialog.destroy()
+            self.refresh_product_list(reload=False)
+            if self.product_tree.exists(slug):
+                self.product_tree.selection_set(slug)
+                self.product_tree.see(slug)
+            self.manage_status_var.set(f"Bundle added: {name} ({product['itemId']}) - Publish to put it online")
+            try:
+                os.startfile(folder)
+            except OSError:
+                pass
+
+        buttons = ttk.Frame(frame); buttons.pack(fill='x', pady=(12, 0))
+        ttk.Button(buttons, text="Create Bundle", command=create).pack(side='right')
+        ttk.Button(buttons, text="Cancel", command=dialog.destroy).pack(side='right', padx=6)
+
+    def write_bundle_photos(self, folder, photos, pieces):
+        """Put the bundle's own photos in its folder as 1.jpg, 2.jpg, ...
+
+        Group photos chosen by hand come first. With none, a cover is made by
+        tiling each piece's lead photo (or, without Pillow, the first piece's
+        photo is copied) so the shop card, cart and catalog feed have an image.
+        The site adds each piece's own photo after these, so they aren't copied.
+        Returns how many files were written."""
+        try:
+            from PIL import Image as PILImage, ImageOps
+        except ImportError:
+            PILImage = None
+
+        written = 0
+        for src in photos:
+            written += 1
+            target = os.path.join(folder, f"{written}.jpg")
+            if PILImage:
+                img = ImageOps.exif_transpose(PILImage.open(src)).convert('RGB')
+                img.save(target, 'JPEG', quality=90)
+            elif src.lower().endswith(('.jpg', '.jpeg')):
+                shutil.copy2(src, target)
+            else:
+                written -= 1     # can't convert a PNG without Pillow
+        if written:
+            return written
+
+        leads = []
+        for p in pieces:
+            src_folder, images = self.product_images(p)
+            if images:
+                leads.append(os.path.join(src_folder, images[0]))
+        if not leads:
+            return 0
+        target = os.path.join(folder, "1.jpg")
+        if not PILImage:
+            shutil.copy2(leads[0], target)
+            return 1
+
+        # Square tiles, cropped to the middle, in a near-square grid.
+        cols = len(leads) if len(leads) <= 3 else 2 if len(leads) == 4 else 3
+        rows = -(-len(leads) // cols)
+        tile, gap = BUNDLE_COVER_PX, 24
+        sheet = PILImage.new('RGB', (cols * tile + (cols + 1) * gap,
+                                     rows * tile + (rows + 1) * gap), 'white')
+        for i, src in enumerate(leads):
+            img = ImageOps.exif_transpose(PILImage.open(src)).convert('RGB')
+            img = ImageOps.fit(img, (tile, tile), PILImage.LANCZOS)
+            r, c = divmod(i, cols)
+            sheet.paste(img, (gap + c * (tile + gap), gap + r * (tile + gap)))
+        sheet.save(target, 'JPEG', quality=88, optimize=True)
+        return 1
+
     def delete_product(self):
         pid = self.get_selected_product()
         if not pid: return
@@ -1823,6 +2094,7 @@ class ProductAdminApp:
                     return messagebox.showerror(
                         "Could not move photos", f"{exc}\n\nNothing was changed.", parent=dialog)
 
+                self.rename_in_bundles(product['id'], slug)
                 product['id'] = slug
                 product['folder'] = slug
 

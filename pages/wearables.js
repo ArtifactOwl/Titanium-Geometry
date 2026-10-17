@@ -12,6 +12,7 @@ import ProductCard from "../components/ProductCard";
 import Testimonials from "../components/Testimonials";
 import { effectivePrice } from "../lib/pricing";
 import { SORT_OPTIONS, filterProducts, sortProducts } from "../lib/search";
+import { touchesGroups } from "../lib/bundles";
 
 // Knives and tools have their own fittings and aren't worn, so they're left
 // out here — which also makes this page safe to link from Facebook.
@@ -24,7 +25,10 @@ export default function WearablesPage() {
   const available = useMemo(
     () =>
       products.products.filter(
-        (p) => !EXCLUDED_GROUPS.includes(p.group) && (p.status === "available" || !p.status)
+        // touchesGroups also catches a bundle with a knife in it.
+        (p) =>
+          !touchesGroups(p, EXCLUDED_GROUPS, products.products) &&
+          (p.status === "available" || !p.status)
       ),
     []
   );

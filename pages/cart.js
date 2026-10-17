@@ -7,6 +7,7 @@ import Header from "../components/Header";
 import { useCart } from "../lib/cart";
 import { parseCartQuery } from "../lib/cartLink";
 import { thumbSrc } from "../lib/images";
+import { isBundle } from "../lib/bundles";
 import { PAYPAL_OPTION_NAME, WEAR_OPTIONS, canChooseWear, wearLabel } from "../lib/wear";
 import { trackInitiateCheckout } from "../lib/fbpixel";
 import Footer from "../components/Footer";
@@ -56,16 +57,25 @@ export default function CartPage() {
   }, [router.isReady, loaded, router.asPath]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resolve ids to products, splitting out anything no longer purchasable.
-  const { items, unavailable } = useMemo(() => {
+  const { items, unavailable, covered } = useMemo(() => {
     const items = [];
     const unavailable = [];
+    // Pieces that are also in the cart inside a bundle: charging for both
+    // would sell the same one-off twice, so the bundle wins.
+    const covered = [];
+    const bundled = new Map();
+    ids.forEach((id) => {
+      const p = productData.products.find((x) => x.id === id);
+      if (isBundle(p)) p.bundle.forEach((m) => bundled.set(m, p));
+    });
     ids.forEach((id) => {
       const p = productData.products.find((x) => x.id === id);
       if (!p) return; // product was deleted
-      if ((p.status || "available") === "available") items.push(p);
+      if (bundled.has(id)) covered.push({ product: p, bundle: bundled.get(id) });
+      else if ((p.status || "available") === "available") items.push(p);
       else unavailable.push(p);
     });
-    return { items, unavailable };
+    return { items, unavailable, covered };
   }, [ids]);
 
   const coupon = appliedCode ? findCoupon(appliedCode) : null;
@@ -97,7 +107,7 @@ export default function CartPage() {
 
         {!loaded ? (
           <p style={{ color: "#6b7280" }}>Loading…</p>
-        ) : items.length === 0 && unavailable.length === 0 ? (
+        ) : items.length === 0 && unavailable.length === 0 && covered.length === 0 ? (
           <div style={emptyStyle}>
             <p>Your cart is empty.</p>
             <Link href="/shop" style={btnPrimaryStyle}>
@@ -153,6 +163,25 @@ export default function CartPage() {
                   </div>
                 </div>
               ))}
+
+              {covered.length > 0 && (
+                <div style={soldNoticeStyle}>
+                  <strong>Already in a bundle</strong>
+                  <p style={{ margin: "0.5rem 0" }}>
+                    These are included in a bundle in your cart, so they aren&apos;t charged again:
+                  </p>
+                  {covered.map(({ product: p, bundle: b }) => (
+                    <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "0.25rem 0" }}>
+                      <span>
+                        {p.name} — in {b.name}
+                      </span>
+                      <button style={removeBtnStyle} onClick={() => remove(p.id)}>
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {unavailable.length > 0 && (
                 <div style={soldNoticeStyle}>

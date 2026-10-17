@@ -8,6 +8,7 @@ import Footer from "../components/Footer";
 import { effectivePrice } from "../lib/pricing";
 import ProductCard from "../components/ProductCard";
 import { SORT_OPTIONS, filterProducts, keywordCounts, sortProducts } from "../lib/search";
+import { isBundle } from "../lib/bundles";
 
 export default function Shop() {
   const router = useRouter();
@@ -41,7 +42,10 @@ export default function Shop() {
     filteredProducts.filter((p) => p.status === "available" || !p.status)
   );
   const soldProducts = sortFor(
-    filteredProducts.filter((p) => p.status === "sold" || p.status === "pending")
+    // A sold bundle would only repeat pieces already listed as sold.
+    filteredProducts.filter(
+      (p) => (p.status === "sold" && !isBundle(p)) || p.status === "pending"
+    )
   );
 
   const topKeywords = useMemo(() => keywordCounts(allProducts).slice(0, 12), [allProducts]);

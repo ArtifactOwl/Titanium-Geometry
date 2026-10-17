@@ -5,18 +5,22 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { priceInfo } from "../lib/pricing";
 import { thumbSrc, fallbackToFull } from "../lib/images";
+import { isBundle } from "../lib/bundles";
 
 export default function ProductCard({ product }) {
   const [imageError, setImageError] = useState(false);
   const imageSrc = thumbSrc(product.folder);
   const isPending = product.status === "pending";
-  const isSold = product.status === "sold";
+  // "unavailable" is a bundle whose pieces have started selling separately.
+  const isSold = product.status === "sold" || product.status === "unavailable";
   const pricing = priceInfo(product);
 
   return (
     <Link href={`/products/${product.id}`} style={{ textDecoration: "none", color: "inherit" }}>
       <div style={{ ...cardStyle, opacity: isSold || isPending ? 0.6 : 1 }}>
-        {isSold && <div style={soldBadgeStyle}>SOLD</div>}
+        {isSold && (
+          <div style={soldBadgeStyle}>{product.status === "unavailable" ? "UNAVAILABLE" : "SOLD"}</div>
+        )}
         {isPending && <div style={pendingBadgeStyle}>PENDING</div>}
         {product.featured && !isSold && !isPending && (
           <div style={featuredBadgeStyle}>★ Featured</div>
@@ -38,7 +42,9 @@ export default function ProductCard({ product }) {
           )}
         </div>
         <h3 style={cardTitleStyle}>{product.name}</h3>
-        <p style={cardGroupStyle}>{product.group}</p>
+        <p style={cardGroupStyle}>
+          {isBundle(product) ? `Bundle of ${product.bundle.length} pieces` : product.group}
+        </p>
         {pricing.onSale ? (
           <p style={cardPriceStyle}>
             <span style={{ color: "#dc2626" }}>${pricing.final}</span>{" "}

@@ -16,6 +16,7 @@ import YouTubeEmbed from "./YouTubeEmbed";
 import Testimonials from "./Testimonials";
 import { effectivePrice } from "../lib/pricing";
 import { SORT_OPTIONS, filterProducts, sortProducts } from "../lib/search";
+import { touchesGroups } from "../lib/bundles";
 import { adSetById } from "../lib/adSets";
 
 // Meta's commerce policy prohibits weapons, and an ad's landing page gets
@@ -40,7 +41,10 @@ export default function AdLanding({ setId }) {
   // sets up front turns recognition into a choice.
   const { own, rest } = useMemo(() => {
     const eligible = products.products.filter(
-      (p) => !EXCLUDED_GROUPS.includes(p.group) && (p.status === "available" || !p.status)
+      // touchesGroups also catches a bundle with a knife in it.
+      (p) =>
+        !touchesGroups(p, EXCLUDED_GROUPS, products.products) &&
+        (p.status === "available" || !p.status)
     );
     const own = set ? eligible.filter((p) => p[set.flag]) : [];
     const shown = new Set(own.map((p) => p.id));

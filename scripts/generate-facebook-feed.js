@@ -102,8 +102,16 @@ function main() {
   const rows = [];
   const skipped = { excludedGroup: 0, noImages: [] };
 
-  for (const p of data.products || []) {
-    if (EXCLUDED_GROUPS.includes(p.group)) {
+  const all = data.products || [];
+  // A bundle takes on the categories of the pieces in it, so a knife and
+  // pendant set stays off the feed just as the knife does.
+  const groupsOf = (p) =>
+    Array.isArray(p.bundle) && p.bundle.length
+      ? p.bundle.map((id) => (all.find((x) => x.id === id) || {}).group)
+      : [p.group];
+
+  for (const p of all) {
+    if (groupsOf(p).some((g) => EXCLUDED_GROUPS.includes(g))) {
       skipped.excludedGroup++;
       continue;
     }

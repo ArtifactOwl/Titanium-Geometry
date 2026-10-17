@@ -13,6 +13,13 @@ import Testimonials from "../../components/Testimonials";
 import RelatedProducts from "../../components/RelatedProducts";
 import { displaySrc, fullSrc, thumbSrc } from "../../lib/images";
 import { DEFAULT_WEAR, PAYPAL_OPTION_NAME, WEAR_OPTIONS, canChooseWear, wearLabel } from "../../lib/wear";
+import {
+  availableBundlesWith,
+  bundleMembers,
+  isBundle,
+  liveStatus,
+  separatePrice,
+} from "../../lib/bundles";
 
 // The bullet list under Details, used unless a product overrides it. Knives and
 // tools need their own — the weight and the "never crack or peel" line are
@@ -80,8 +87,14 @@ export default function ProductPage() {
         const MAX_IMAGES = 20;
         const possibleImages = [];
         for (let i = 1; i <= MAX_IMAGES; i++) {
-          possibleImages.push(i);
+          possibleImages.push({ folder: found.folder, n: i });
         }
+        // A bundle shows its own group photos first, then the lead photo of
+        // each piece in it, so nobody has to open every piece to see them.
+        bundleMembers(found, products.products).forEach((m) => {
+          possibleImages.push({ folder: m.folder, n: 1 });
+        });
+        setMainImage(0);
         setImages(possibleImages);
         
         // Try video
@@ -102,6 +115,11 @@ export default function ProductPage() {
   const pricing = priceInfo(product);
   const shippingRate = shippingFor(selectedCountry);
   const totalPrice = round2(pricing.final + shippingRate);
+  const status = liveStatus(product, products.products);
+  const bundle = isBundle(product);
+  const members = bundleMembers(product, products.products);
+  const partOf = availableBundlesWith(product, products.products);
+  const main = images[mainImage] || { folder: product.folder, n: 1 };
 
   return (
     <div style={pageStyle}>
@@ -130,25 +148,25 @@ export default function ProductPage() {
           <div style={galleryStyle}>
             <div style={mainImageContainerStyle}>
               <ImageWithFallback
-                src={displaySrc(product.folder, images[mainImage])}
-                fallback={fullSrc(product.folder, images[mainImage])}
+                src={displaySrc(main.folder, main.n)}
+                fallback={fullSrc(main.folder, main.n)}
                 alt={product.name}
                 style={{ ...mainImageStyle, cursor: "zoom-in" }}
-                onClick={() => setZoomed(images[mainImage])}
+                onClick={() => setZoomed(main)}
                 eager
               />
             </div>
-            <button type="button" onClick={() => setZoomed(images[mainImage])} style={zoomHintStyle}>
+            <button type="button" onClick={() => setZoomed(main)} style={zoomHintStyle}>
               🔍 Click the photo to see the engraving full size
             </button>
 
             {/* Thumbnails */}
             <div style={thumbnailsStyle}>
-              {images.map((n, idx) => (
+              {images.map(({ folder, n }, idx) => (
                 <ImageWithFallback
-                  key={n}
-                  src={thumbSrc(product.folder, n)}
-                  fallback={fullSrc(product.folder, n)}
+                  key={`${folder}/${n}`}
+                  src={thumbSrc(folder, n)}
+                  fallback={fullSrc(folder, n)}
                   alt={`${product.name} ${idx + 1}`}
                   style={{
                     ...thumbnailStyle,
@@ -175,15 +193,24 @@ export default function ProductPage() {
             <h1 style={titleStyle}>{product.name}</h1>
             <p style={groupStyle}>{product.group}</p>
             
-            {product.status === 'sold' ? (
+            {status === 'unavailable' ? (
+              <div style={soldNoticeStyle}>
+                <span style={soldBadgeStyle}>NO LONGER AVAILABLE</span>
+                <p>
+                  One of the pieces in this bundle has sold on its own, so the set can&apos;t be
+                  bought together any more. Any pieces still available are listed below at
+                  their own prices.
+                </p>
+              </div>
+            ) : status === 'sold' ? (
               <div style={soldNoticeStyle}>
                 <span style={soldBadgeStyle}>SOLD</span>
-                <p>This piece has been sold. <Link href="/commission" style={{color: "#2563eb"}}>Request a similar piece</Link></p>
+                <p>{bundle ? "This bundle has been sold." : "This piece has been sold."} <Link href="/commission" style={{color: "#2563eb"}}>Request a similar piece</Link></p>
               </div>
-            ) : product.status === 'pending' ? (
+            ) : status === 'pending' ? (
               <div style={pendingNoticeStyle}>
                 <span style={pendingBadgeStyle}>PENDING</span>
-                <p style={{marginTop: "0.5rem"}}>This piece is currently unavailable. Interested in a similar design?</p>
+                <p style={{marginTop: "0.5rem"}}>This {bundle ? "bundle" : "piece"} is currently unavailable. Interested in a similar design?</p>
                 <PendingContactForm productName={product.name} />
               </div>
             ) : (
@@ -204,7 +231,12 @@ export default function ProductPage() {
                 {product.itemId && (
                   <p style={itemIdStyle}>Item #{product.itemId}</p>
                 )}
-                
+
+                {bundle && <BundleSavings product={product} price={pricing.final} />}
+                {!bundle && partOf.map((b) => (
+                  <PartOfBundle key={b.id} bundle={b} />
+                ))}
+
                 {canChooseWear(product) && (
                   <div style={wearBoxStyle}>
                     <span style={labelStyle}>Wear it as:</span>
@@ -224,7 +256,9 @@ export default function ProductPage() {
                       </label>
                     ))}
                     <p style={wearNoteStyle}>
-                      Same piece either way — only the fitting changes.
+                      {bundle
+                        ? "Applies to each wearable piece in the bundle."
+                        : "Same piece either way — only the fitting changes."}
                     </p>
                   </div>
                 )}
@@ -298,6 +332,13 @@ export default function ProductPage() {
               </>
             )}
 
+            {/* Every piece in a bundle, each linking to its own page and price —
+                shown even once the bundle is gone, as the way to the pieces
+                that are left. */}
+            {bundle && members.length > 0 && (
+              <BundleContents members={members} />
+            )}
+
             {/* Description */}
             <div style={descriptionStyle}>
               <h2 style={descTitleStyle}>Description</h2>
@@ -305,7 +346,10 @@ export default function ProductPage() {
               
               {/* A knife with no size and no bullets of its own yet would
                   otherwise show an empty Details heading. */}
-              {((product.size && String(product.size).trim()) || detailsFor(product).length > 0) && (
+              {/* A bundle's pieces carry their own details; the standard
+                  pendant bullets (weight and so on) don't describe a set. */}
+              {(!bundle || Array.isArray(product.details)) &&
+                ((product.size && String(product.size).trim()) || detailsFor(product).length > 0) && (
                 <>
                   <h3 style={detailsTitleStyle}>Details</h3>
                   <ul style={detailsListStyle}>
@@ -327,13 +371,13 @@ export default function ProductPage() {
           </div>
         </div>
 
-        <RelatedProducts product={product} />
+        {!bundle && <RelatedProducts product={product} />}
       </main>
 
       {zoomed !== null && (
         <Lightbox
-          folder={product.folder}
-          n={zoomed}
+          folder={zoomed.folder}
+          n={zoomed.n}
           name={product.name}
           onClose={() => setZoomed(null)}
         />
@@ -384,8 +428,22 @@ function Lightbox({ folder, n, name, onClose }) {
 
 // Add to cart, so several pieces can be bought together with one shipping charge
 function AddToCartButton({ product, wear }) {
-  const { add, has } = useCart();
+  const { add, remove, has, ids } = useCart();
   const inCart = has(product.id);
+  // A piece already in the cart as part of a bundle mustn't be bought twice.
+  const inCartBundle = products.products.find(
+    (b) => isBundle(b) && b.bundle.includes(product.id) && ids.includes(b.id)
+  );
+
+  if (!inCart && inCartBundle) {
+    return (
+      <div style={{ marginBottom: "1rem" }}>
+        <Link href="/cart" style={{ ...addToCartStyle, background: "#047857", display: "block", textAlign: "center", textDecoration: "none" }}>
+          ✓ In your cart as part of {inCartBundle.name}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div style={{ marginBottom: "1rem" }}>
@@ -397,6 +455,8 @@ function AddToCartButton({ product, wear }) {
         <button
           style={addToCartStyle}
           onClick={() => {
+            // The bundle replaces any of its pieces already in the cart.
+            if (isBundle(product)) product.bundle.forEach((id) => remove(id));
             add(product.id, wear);
             trackAddToCart(product, priceInfo(product).final);
           }}
@@ -410,6 +470,136 @@ function AddToCartButton({ product, wear }) {
     </div>
   );
 }
+
+// On a bundle: what the pieces cost one at a time, and what the set saves.
+function BundleSavings({ product, price }) {
+  const separately = separatePrice(product, products.products);
+  const saving = round2(separately - price);
+  if (!(separately > 0)) return null;
+  return (
+    <p style={bundleSavingsStyle}>
+      {product.bundle.length} pieces · ${separately.toFixed(2)} bought separately
+      {saving > 0 && (
+        <>
+          {" "}
+          — <strong>you save ${saving.toFixed(2)}</strong>
+        </>
+      )}
+    </p>
+  );
+}
+
+// On a piece: the bundle(s) it is also sold in.
+function PartOfBundle({ bundle }) {
+  const price = priceInfo(bundle).final;
+  const saving = round2(separatePrice(bundle, products.products) - price);
+  return (
+    <Link href={`/products/${bundle.id}`} style={partOfStyle}>
+      <span style={partOfLabelStyle}>Part of a bundle</span>
+      <span>
+        <strong>{bundle.name}</strong> — all {bundle.bundle.length} pieces for ${price}
+        {saving > 0 ? ` (save $${saving.toFixed(2)})` : ""} →
+      </span>
+    </Link>
+  );
+}
+
+// On a bundle: each piece, linking to its own listing at its own price.
+function BundleContents({ members }) {
+  return (
+    <section style={bundleContentsStyle}>
+      <h2 style={bundleContentsTitleStyle}>In this bundle</h2>
+      <p style={bundleContentsNoteStyle}>
+        Each piece is also listed on its own — tap one to see it up close.
+      </p>
+      {members.map((m) => {
+        const memberStatus = liveStatus(m, products.products);
+        const p = priceInfo(m);
+        return (
+          <Link key={m.id} href={`/products/${m.id}`} style={bundleRowStyle}>
+            <img
+              src={thumbSrc(m.folder)}
+              alt={m.name}
+              loading="lazy"
+              decoding="async"
+              style={bundleThumbStyle}
+            />
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={bundleRowNameStyle}>{m.name}</span>
+              <span style={bundleRowMetaStyle}>
+                {m.group}
+                {m.itemId ? ` · Item #${m.itemId}` : ""}
+              </span>
+            </span>
+            <span style={bundleRowPriceStyle}>
+              {memberStatus === "available" ? `$${p.final}` : memberStatus.toUpperCase()}
+            </span>
+          </Link>
+        );
+      })}
+    </section>
+  );
+}
+
+const bundleSavingsStyle = {
+  margin: "-0.25rem 0 1rem",
+  color: "#047857",
+  fontSize: "0.95rem",
+};
+const partOfStyle = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.15rem",
+  margin: "0 0 1rem",
+  padding: "0.7rem 0.9rem",
+  border: "2px solid #111827",
+  borderRadius: "8px",
+  background: "#f9fafb",
+  color: "#111827",
+  textDecoration: "none",
+  fontSize: "0.95rem",
+};
+const partOfLabelStyle = {
+  fontSize: "0.75rem",
+  fontWeight: 700,
+  letterSpacing: "0.05em",
+  textTransform: "uppercase",
+  color: "#6b7280",
+};
+const bundleContentsStyle = {
+  margin: "0 0 1.5rem",
+  padding: "1rem",
+  border: "1px solid #e5e7eb",
+  borderRadius: "8px",
+};
+const bundleContentsTitleStyle = { fontSize: "1.1rem", margin: "0 0 0.25rem" };
+const bundleContentsNoteStyle = { color: "#6b7280", fontSize: "0.85rem", margin: "0 0 0.75rem" };
+const bundleRowStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.75rem",
+  padding: "0.5rem 0",
+  borderTop: "1px solid #f3f4f6",
+  color: "inherit",
+  textDecoration: "none",
+};
+const bundleThumbStyle = {
+  width: "56px",
+  height: "56px",
+  objectFit: "cover",
+  borderRadius: "6px",
+  flexShrink: 0,
+  background: "#f3f4f6",
+};
+const bundleRowNameStyle = {
+  display: "block",
+  fontWeight: 600,
+  color: "#2563eb",
+  textDecoration: "underline",
+  textUnderlineOffset: "2px",
+};
+const bundleRowMetaStyle = { display: "block", color: "#6b7280", fontSize: "0.8rem" };
+const bundleRowPriceStyle = { fontWeight: 600, whiteSpace: "nowrap" };
 
 const addToCartStyle = {
   width: "100%",
