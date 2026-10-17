@@ -4,14 +4,16 @@
     "Geometric Pendants",
     "Organic and Other Pendants",
     "Judaic",
-    "Knives & Tools"
+    "Knives & Tools",
+    "Bundles"
   ],
   "categoryImages": {
     "Molecules": "/categories/molecules.jpg",
     "Geometric Pendants": "/categories/geometric.jpg",
     "Organic and Other Pendants": "/categories/organic.jpg",
     "Judaic": "/categories/judaic.jpg",
-    "Knives & Tools": "/categories/knives-tools.jpg"
+    "Knives & Tools": "/categories/knives-tools.jpg",
+    "Bundles": "/pendants/flower-shift-bundle-shifted-silver-sunburst/1.jpg"
   },
   "products": [
     {
@@ -1590,8 +1592,7 @@
       "status": "available",
       "itemId": "X0012",
       "created": "2026-10-13",
-      "size": "2.4\" or 6cm long",
-      "featured": true
+      "size": "2.4\" or 6cm long"
     },
     {
       "id": "flower-shifted",
@@ -1604,6 +1605,49 @@
       "itemId": "O0032",
       "created": "2026-10-15",
       "size": "3.8cm or 1.5\"",
+      "featured": true
+    },
+    {
+      "id": "flower-shift-silver",
+      "name": "Flower Shift Silver",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS Ground Advantage - Insured (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 90.0,
+      "group": "Organic and Other Pendants",
+      "folder": "flower-shift-silver",
+      "status": "available",
+      "itemId": "O0033",
+      "created": "2026-10-17",
+      "size": "4cm or 1.6\"",
+      "featured": true
+    },
+    {
+      "id": "flower-shift-sunburst",
+      "name": "Flower Shift Sunburst",
+      "description": "Includes:\n\u2022 Titanium pendant with precision laser engraving\n\u2022 Necklace with Clasp (or keychain attachment on request)\n\u2022 Gift box\n\nShipping:\n\u2022 US orders ship free via USPS Ground Advantage - Insured (3-5 business days)\n\u2022 International shipping available\n\nCare:\n\u2022 Titanium is hypoallergenic and will not tarnish \n\u2022 Can be safely worn in the shower, chlorine pools, & the ocean\n\u2022 Clean with mild soap and water and scrub gently with a toothbrush\n\u2022 Skin oils, sunscreen, etc may *temporarily* change the visible coloration,however cleaning with soap will restore the original coloring",
+      "price": 75.0,
+      "group": "Organic and Other Pendants",
+      "folder": "flower-shift-sunburst",
+      "status": "available",
+      "itemId": "O0034",
+      "created": "2026-10-17",
+      "size": "3.7cm or 1.5\"",
+      "featured": true
+    },
+    {
+      "id": "flower-shift-bundle-shifted-silver-sunburst",
+      "name": "Flower Shift Bundle - Shifted, Silver, & Sunburst",
+      "description": "These 3 pieces together, for less than buying them separately:\n\n\u2022 Flower Shifted (Item #O0032)\n\u2022 Flower Shift Silver (Item #O0033)\n\u2022 Flower Shift Sunburst (Item #O0034)\n\nEach piece is one of a kind and is also listed on its own.",
+      "price": 200.0,
+      "group": "Bundles",
+      "folder": "flower-shift-bundle-shifted-silver-sunburst",
+      "status": "available",
+      "itemId": "B0001",
+      "created": "2026-10-17",
+      "bundle": [
+        "flower-shifted",
+        "flower-shift-silver",
+        "flower-shift-sunburst"
+      ],
       "featured": true
     }
   ],
