@@ -11,7 +11,7 @@ import Footer from "../../components/Footer";
 import YouTubeEmbed from "../../components/YouTubeEmbed";
 import Testimonials from "../../components/Testimonials";
 import RelatedProducts from "../../components/RelatedProducts";
-import { displaySrc, fullSrc, thumbSrc } from "../../lib/images";
+import { displaySrc, fallbackToFull, fullSrc, thumbSrc } from "../../lib/images";
 import {
   DEFAULT_WEAR,
   PAYPAL_OPTION_NAME,
@@ -103,7 +103,7 @@ export default function ProductPage() {
         // A bundle shows its own group photos first, then the lead photo of
         // each piece in it, so nobody has to open every piece to see them.
         bundleMembers(found, products.products).forEach((m) => {
-          possibleImages.push({ folder: m.folder, n: 1 });
+          possibleImages.push({ folder: m.folder, n: 1, label: m.name });
         });
         setMainImage(0);
         setImages(possibleImages);
@@ -171,13 +171,16 @@ export default function ProductPage() {
                 eager
               />
             </div>
+            {/* Which piece the big photo shows, when it's one of a bundle's. */}
+            {main.label && <p style={mainCaptionStyle}>{main.label}</p>}
+
             <button type="button" onClick={() => setZoomed(main)} style={zoomHintStyle}>
               🔍 Click the photo to see the engraving full size
             </button>
 
             {/* Thumbnails */}
             <div style={thumbnailsStyle}>
-              {images.map(({ folder, n }, idx) => (
+              {images.map(({ folder, n, label }, idx) => label ? null : (
                 <ImageWithFallback
                   key={`${folder}/${n}`}
                   src={thumbSrc(folder, n)}
@@ -191,6 +194,34 @@ export default function ProductPage() {
                 />
               ))}
             </div>
+
+            {/* A bundle's pieces get their own row, each photo named, so it's
+                clear which is which when choosing pendant or keychain. */}
+            {images.some((im) => im.label) && (
+              <div style={pieceThumbsStyle}>
+                {images.map(({ folder, n, label }, idx) => label && (
+                  <button
+                    key={`${folder}/${n}`}
+                    type="button"
+                    onClick={() => setMainImage(idx)}
+                    style={pieceThumbButtonStyle}
+                  >
+                    <img
+                      src={thumbSrc(folder, n)}
+                      alt={label}
+                      loading="lazy"
+                      decoding="async"
+                      onError={fallbackToFull(folder, n)}
+                      style={{
+                        ...pieceThumbStyle,
+                        border: mainImage === idx ? "2px solid #111827" : "2px solid transparent",
+                      }}
+                    />
+                    <span style={pieceThumbLabelStyle}>{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Local video if exists */}
             <VideoWithFallback src={videos[0]} />
@@ -257,7 +288,17 @@ export default function ProductPage() {
                     <span style={labelStyle}>How would you like each piece?</span>
                     {pieces.map((piece) => (
                       <div key={piece.id} style={fittingRowStyle}>
-                        <span style={fittingNameStyle}>{piece.name}</span>
+                        <span style={fittingNameStyle}>
+                          <img
+                            src={thumbSrc(piece.folder)}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            onError={fallbackToFull(piece.folder)}
+                            style={fittingThumbStyle}
+                          />
+                          {piece.name}
+                        </span>
                         {WEAR_OPTIONS.map((option) => (
                           <label key={option.value} style={fittingOptionStyle}>
                             <input
@@ -594,7 +635,22 @@ const fittingRowStyle = {
   padding: "0.45rem 0",
   borderTop: "1px solid #e5e7eb",
 };
-const fittingNameStyle = { flex: "1 1 100%", fontWeight: 600, fontSize: "0.9rem" };
+const fittingNameStyle = {
+  flex: "1 1 100%",
+  display: "flex",
+  alignItems: "center",
+  gap: "0.5rem",
+  fontWeight: 600,
+  fontSize: "0.9rem",
+};
+const fittingThumbStyle = {
+  width: "36px",
+  height: "36px",
+  objectFit: "cover",
+  borderRadius: "4px",
+  flexShrink: 0,
+  background: "#f3f4f6",
+};
 const fittingOptionStyle = {
   display: "flex",
   alignItems: "center",
@@ -964,6 +1020,46 @@ const thumbnailsStyle = {
   display: "flex",
   gap: "0.5rem",
   flexWrap: "wrap",
+};
+
+const mainCaptionStyle = {
+  margin: "0.4rem 0 0",
+  textAlign: "center",
+  fontWeight: 600,
+  fontSize: "0.95rem",
+};
+
+const pieceThumbsStyle = {
+  display: "flex",
+  gap: "0.75rem",
+  flexWrap: "wrap",
+  marginTop: "0.75rem",
+};
+
+const pieceThumbButtonStyle = {
+  width: "100px",
+  padding: 0,
+  border: "none",
+  background: "none",
+  cursor: "pointer",
+  textAlign: "center",
+  font: "inherit",
+};
+
+const pieceThumbStyle = {
+  width: "100px",
+  height: "100px",
+  objectFit: "cover",
+  borderRadius: "6px",
+  display: "block",
+};
+
+const pieceThumbLabelStyle = {
+  display: "block",
+  marginTop: "0.3rem",
+  fontSize: "0.78rem",
+  lineHeight: 1.25,
+  color: "#374151",
 };
 
 const thumbnailStyle = {
