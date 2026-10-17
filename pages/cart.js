@@ -8,7 +8,15 @@ import { useCart } from "../lib/cart";
 import { parseCartQuery } from "../lib/cartLink";
 import { thumbSrc } from "../lib/images";
 import { isBundle } from "../lib/bundles";
-import { PAYPAL_OPTION_NAME, WEAR_OPTIONS, canChooseWear, wearLabel } from "../lib/wear";
+import {
+  PAYPAL_OPTION_NAME,
+  WEAR_OPTIONS,
+  canChooseWear,
+  fittingsLabel,
+  normaliseFittings,
+  wearLabel,
+  wearablePieces,
+} from "../lib/wear";
 import { trackInitiateCheckout } from "../lib/fbpixel";
 import Footer from "../components/Footer";
 import {
@@ -28,7 +36,9 @@ const CONTACT_EMAIL = "titaniumgeometry@gmail.com";
 
 export default function CartPage() {
   const router = useRouter();
-  const { ids, items: cartItems, add, remove, setWear, wearFor, clear, loaded } = useCart();
+  const {
+    ids, items: cartItems, add, remove, setWear, wearFor, setFitting, fittingsFor, clear, loaded,
+  } = useCart();
   const [country, setCountry] = useState("US");
   const [codeInput, setCodeInput] = useState("");
   const [appliedCode, setAppliedCode] = useState("");
@@ -129,7 +139,29 @@ export default function CartPage() {
                       {p.group}
                       {p.itemId ? ` · Item #${p.itemId}` : ""}
                     </p>
-                    {canChooseWear(p) && (
+                    {/* A bundle: one choice per wearable piece in it. */}
+                    {isBundle(p) &&
+                      (() => {
+                        const pieces = wearablePieces(p, productData.products);
+                        const choices = normaliseFittings(fittingsFor(p.id), pieces);
+                        return pieces.map((piece) => (
+                          <label key={piece.id} style={wearRowStyle}>
+                            <span style={{ color: "#6b7280" }}>{piece.name}:</span>
+                            <select
+                              value={choices[piece.id]}
+                              onChange={(e) => setFitting(p.id, piece.id, e.target.value)}
+                              style={wearSelectStyle}
+                            >
+                              {WEAR_OPTIONS.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                  {o.label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        ));
+                      })()}
+                    {!isBundle(p) && canChooseWear(p) && (
                       <label style={wearRowStyle}>
                         <span style={{ color: "#6b7280" }}>Wear as:</span>
                         <select
@@ -329,7 +361,13 @@ export default function CartPage() {
               </div>
 
               {items.length > 0 && (
-                <PayPalCartForm items={items} totals={totals} wearFor={wearFor} coupon={totals.couponApplied ? coupon : null} />
+                <PayPalCartForm
+                  items={items}
+                  totals={totals}
+                  wearFor={wearFor}
+                  fittingsFor={fittingsFor}
+                  coupon={totals.couponApplied ? coupon : null}
+                />
               )}
               {items.length > 0 && <SaveCart items={items} />}
               <p style={secureNoteStyle}>🔒 Secure checkout via PayPal.</p>
@@ -433,7 +471,7 @@ function SaveCart({ items }) {
  * PayPal Payments Standard "cart upload": one POST carrying every line item,
  * a single shipping charge (handling_cart) and any coupon (discount_amount_cart).
  */
-function PayPalCartForm({ items, totals, wearFor, coupon }) {
+function PayPalCartForm({ items, totals, wearFor, fittingsFor, coupon }) {
   return (
     <form
       action="https://www.paypal.com/cgi-bin/webscr"
@@ -446,7 +484,12 @@ function PayPalCartForm({ items, totals, wearFor, coupon }) {
       <input type="hidden" name="business" value={PAYPAL_EMAIL} />
       <input type="hidden" name="currency_code" value="USD" />
 
-      {items.map((p, i) => (
+      {items.map((p, i) => {
+        const pieces = isBundle(p) ? wearablePieces(p, productData.products) : [];
+        const fitting = isBundle(p)
+          ? pieces.length > 0 && fittingsLabel(fittingsFor(p.id), pieces)
+          : canChooseWear(p) && wearLabel(wearFor(p.id));
+        return (
         <React.Fragment key={p.id}>
           <input
             type="hidden"
@@ -458,14 +501,15 @@ function PayPalCartForm({ items, totals, wearFor, coupon }) {
           <input type="hidden" name={`quantity_${i + 1}`} value="1" />
           {/* The fitting rides along per line, so the order notification says
               which one to ship. */}
-          {canChooseWear(p) && (
+          {fitting && (
             <>
               <input type="hidden" name={`on0_${i + 1}`} value={PAYPAL_OPTION_NAME} />
-              <input type="hidden" name={`os0_${i + 1}`} value={wearLabel(wearFor(p.id))} />
+              <input type="hidden" name={`os0_${i + 1}`} value={fitting} />
             </>
           )}
         </React.Fragment>
-      ))}
+        );
+      })}
 
       {totals.shipping > 0 && (
         <input type="hidden" name="handling_cart" value={totals.shipping.toFixed(2)} />

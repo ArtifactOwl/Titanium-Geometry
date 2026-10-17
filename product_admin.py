@@ -1133,6 +1133,10 @@ class ProductAdminApp:
         """
         if not product or product.get('noWearChoice'):
             return False
+        # A bundle offers a choice for each of its wearable pieces, so it
+        # follows them (wearablePieces() in lib/wear.js).
+        if self.is_bundle(product):
+            return any(self.offers_wear_choice(m) for m in self.bundle_members(product))
         return product.get('group') not in NOT_WEARABLE_GROUPS
 
     def toggle_wear_choice_for(self, product_ids, anchor_id):
@@ -1147,6 +1151,11 @@ class ProductAdminApp:
             self.manage_status_var.set(
                 f"{anchor.get('group')} never offers the pendant/keychain choice")
             return
+        if self.is_bundle(anchor):
+            self.manage_status_var.set(
+                "A bundle follows its pieces - buyers choose for each wearable piece. "
+                "Change it on the pieces themselves.")
+            return
 
         turn_on = not self.offers_wear_choice(anchor)
 
@@ -1155,7 +1164,7 @@ class ProductAdminApp:
             product = by_id.get(pid)
             if not product:
                 continue
-            if product.get('group') in NOT_WEARABLE_GROUPS:
+            if product.get('group') in NOT_WEARABLE_GROUPS or self.is_bundle(product):
                 skipped += 1
                 continue
             if self.offers_wear_choice(product) == turn_on:

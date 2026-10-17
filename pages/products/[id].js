@@ -12,7 +12,16 @@ import YouTubeEmbed from "../../components/YouTubeEmbed";
 import Testimonials from "../../components/Testimonials";
 import RelatedProducts from "../../components/RelatedProducts";
 import { displaySrc, fullSrc, thumbSrc } from "../../lib/images";
-import { DEFAULT_WEAR, PAYPAL_OPTION_NAME, WEAR_OPTIONS, canChooseWear, wearLabel } from "../../lib/wear";
+import {
+  DEFAULT_WEAR,
+  PAYPAL_OPTION_NAME,
+  WEAR_OPTIONS,
+  canChooseWear,
+  fittingsLabel,
+  normaliseFittings,
+  wearLabel,
+  wearablePieces,
+} from "../../lib/wear";
 import {
   availableBundlesWith,
   bundleMembers,
@@ -71,6 +80,8 @@ export default function ProductPage() {
   const [zoomed, setZoomed] = useState(null);
   // Cord or key ring. Same engraved piece either way, so it costs the same.
   const [wear, setWear] = useState(DEFAULT_WEAR);
+  // A bundle's choices, one per wearable piece: { pieceId: "necklace" | … }.
+  const [fittings, setFittings] = useState({});
   
   useEffect(() => {
     if (id) {
@@ -120,6 +131,10 @@ export default function ProductPage() {
   const members = bundleMembers(product, products.products);
   const partOf = availableBundlesWith(product, products.products);
   const main = images[mainImage] || { folder: product.folder, n: 1 };
+  // A bundle offers a choice per wearable piece instead of one for the lot.
+  const pieces = bundle ? wearablePieces(product, products.products) : [];
+  const choices = normaliseFittings(fittings, pieces);
+  const singleChoice = !bundle && canChooseWear(product);
 
   return (
     <div style={pageStyle}>
@@ -237,7 +252,33 @@ export default function ProductPage() {
                   <PartOfBundle key={b.id} bundle={b} />
                 ))}
 
-                {canChooseWear(product) && (
+                {pieces.length > 0 && (
+                  <div style={wearBoxStyle}>
+                    <span style={labelStyle}>How would you like each piece?</span>
+                    {pieces.map((piece) => (
+                      <div key={piece.id} style={fittingRowStyle}>
+                        <span style={fittingNameStyle}>{piece.name}</span>
+                        {WEAR_OPTIONS.map((option) => (
+                          <label key={option.value} style={fittingOptionStyle}>
+                            <input
+                              type="radio"
+                              name={`wear-${piece.id}`}
+                              value={option.value}
+                              checked={choices[piece.id] === option.value}
+                              onChange={() =>
+                                setFittings((prev) => ({ ...prev, [piece.id]: option.value }))
+                              }
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ))}
+                    <p style={wearNoteStyle}>Same pieces either way — only the fitting changes.</p>
+                  </div>
+                )}
+
+                {singleChoice && (
                   <div style={wearBoxStyle}>
                     <span style={labelStyle}>Wear it as:</span>
                     {WEAR_OPTIONS.map((option) => (
@@ -256,9 +297,7 @@ export default function ProductPage() {
                       </label>
                     ))}
                     <p style={wearNoteStyle}>
-                      {bundle
-                        ? "Applies to each wearable piece in the bundle."
-                        : "Same piece either way — only the fitting changes."}
+                      Same piece either way — only the fitting changes.
                     </p>
                   </div>
                 )}
@@ -312,10 +351,16 @@ export default function ProductPage() {
                   <input type="hidden" name="return" value="https://titaniumgeometry.com/success" />
                   <input type="hidden" name="cancel_return" value="https://titaniumgeometry.com/shop" />
                   <input type="hidden" name="notify_url" value="https://titaniumgeometry.com/api/paypal-webhook" />
-                  {canChooseWear(product) && (
+                  {singleChoice && (
                     <>
                       <input type="hidden" name="on0" value={PAYPAL_OPTION_NAME} />
                       <input type="hidden" name="os0" value={wearLabel(wear)} />
+                    </>
+                  )}
+                  {pieces.length > 0 && (
+                    <>
+                      <input type="hidden" name="on0" value={PAYPAL_OPTION_NAME} />
+                      <input type="hidden" name="os0" value={fittingsLabel(choices, pieces)} />
                     </>
                   )}
                   
@@ -324,7 +369,7 @@ export default function ProductPage() {
                   </button>
                 </form>
 
-                <AddToCartButton product={product} wear={wear} />
+                <AddToCartButton product={product} wear={wear} fittings={pieces.length ? choices : null} />
 
                 <p style={secureNoteStyle}>
                   🔒 Secure checkout via PayPal. Pay with credit card or PayPal balance.
@@ -427,7 +472,7 @@ function Lightbox({ folder, n, name, onClose }) {
 }
 
 // Add to cart, so several pieces can be bought together with one shipping charge
-function AddToCartButton({ product, wear }) {
+function AddToCartButton({ product, wear, fittings }) {
   const { add, remove, has, ids } = useCart();
   const inCart = has(product.id);
   // A piece already in the cart as part of a bundle mustn't be bought twice.
@@ -457,7 +502,7 @@ function AddToCartButton({ product, wear }) {
           onClick={() => {
             // The bundle replaces any of its pieces already in the cart.
             if (isBundle(product)) product.bundle.forEach((id) => remove(id));
-            add(product.id, wear);
+            add(product.id, wear, fittings);
             trackAddToCart(product, priceInfo(product).final);
           }}
         >
@@ -540,6 +585,23 @@ function BundleContents({ members }) {
     </section>
   );
 }
+
+const fittingRowStyle = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  gap: "0.35rem 1rem",
+  padding: "0.45rem 0",
+  borderTop: "1px solid #e5e7eb",
+};
+const fittingNameStyle = { flex: "1 1 100%", fontWeight: 600, fontSize: "0.9rem" };
+const fittingOptionStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.35rem",
+  fontSize: "0.9rem",
+  cursor: "pointer",
+};
 
 const bundleSavingsStyle = {
   margin: "-0.25rem 0 1rem",
