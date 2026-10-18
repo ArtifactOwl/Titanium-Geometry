@@ -7,7 +7,7 @@ import Header from "../components/Header";
 import { useCart } from "../lib/cart";
 import { parseCartQuery } from "../lib/cartLink";
 import { thumbSrc } from "../lib/images";
-import { isBundle } from "../lib/bundles";
+import { bundlesOverlap, isBundle } from "../lib/bundles";
 import {
   PAYPAL_OPTION_NAME,
   WEAR_OPTIONS,
@@ -71,16 +71,25 @@ export default function CartPage() {
     const items = [];
     const unavailable = [];
     // Pieces that are also in the cart inside a bundle: charging for both
-    // would sell the same one-off twice, so the bundle wins.
+    // would sell the same one-off twice, so the bundle wins. Likewise a second
+    // bundle sharing a piece with one already in the cart: the first one in
+    // stays, and the other is set aside here.
     const covered = [];
-    const bundled = new Map();
+    const kept = [];
     ids.forEach((id) => {
       const p = productData.products.find((x) => x.id === id);
-      if (isBundle(p)) p.bundle.forEach((m) => bundled.set(m, p));
+      if (!isBundle(p) || (p.status || "available") !== "available") return;
+      const clash = kept.find((b) => bundlesOverlap(b, p));
+      if (clash) covered.push({ product: p, bundle: clash, sharesPieces: true });
+      else kept.push(p);
     });
+    const bundled = new Map();
+    kept.forEach((b) => b.bundle.forEach((m) => bundled.set(m, b)));
+    const setAside = new Set(covered.map((c) => c.product.id));
     ids.forEach((id) => {
       const p = productData.products.find((x) => x.id === id);
       if (!p) return; // product was deleted
+      if (setAside.has(id)) return;
       if (bundled.has(id)) covered.push({ product: p, bundle: bundled.get(id) });
       else if ((p.status || "available") === "available") items.push(p);
       else unavailable.push(p);
@@ -200,12 +209,12 @@ export default function CartPage() {
                 <div style={soldNoticeStyle}>
                   <strong>Already in a bundle</strong>
                   <p style={{ margin: "0.5rem 0" }}>
-                    These are included in a bundle in your cart, so they aren&apos;t charged again:
+                    These overlap with a bundle in your cart, so they aren&apos;t charged again:
                   </p>
-                  {covered.map(({ product: p, bundle: b }) => (
+                  {covered.map(({ product: p, bundle: b, sharesPieces }) => (
                     <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "0.25rem 0" }}>
                       <span>
-                        {p.name} — in {b.name}
+                        {p.name} — {sharesPieces ? "shares pieces with" : "in"} {b.name}
                       </span>
                       <button style={removeBtnStyle} onClick={() => remove(p.id)}>
                         Remove

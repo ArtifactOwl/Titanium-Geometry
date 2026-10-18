@@ -25,6 +25,7 @@ import {
 import {
   availableBundlesWith,
   bundleMembers,
+  bundlesOverlap,
   isBundle,
   liveStatus,
   separatePrice,
@@ -521,6 +522,14 @@ function AddToCartButton({ product, wear, fittings }) {
     (b) => isBundle(b) && b.bundle.includes(product.id) && ids.includes(b.id)
   );
 
+  // Another bundle in the cart that shares a piece with this one: both can't
+  // be bought, so adding this one swaps it out.
+  const clashing = isBundle(product)
+    ? products.products.filter(
+        (b) => b.id !== product.id && ids.includes(b.id) && bundlesOverlap(product, b)
+      )
+    : [];
+
   if (!inCart && inCartBundle) {
     return (
       <div style={{ marginBottom: "1rem" }}>
@@ -541,14 +550,22 @@ function AddToCartButton({ product, wear, fittings }) {
         <button
           style={addToCartStyle}
           onClick={() => {
-            // The bundle replaces any of its pieces already in the cart.
+            // The bundle replaces any of its pieces already in the cart, and
+            // any other bundle sharing one of them.
             if (isBundle(product)) product.bundle.forEach((id) => remove(id));
+            clashing.forEach((b) => remove(b.id));
             add(product.id, wear, fittings);
             trackAddToCart(product, priceInfo(product).final);
           }}
         >
-          Add to Cart
+          {clashing.length ? "Swap for This Bundle" : "Add to Cart"}
         </button>
+      )}
+      {!inCart && clashing.length > 0 && (
+        <p style={{ fontSize: "0.8rem", color: "#b45309", textAlign: "center", margin: "0.4rem 0 0" }}>
+          Your cart has {clashing.map((b) => b.name).join(" and ")}, which shares pieces with
+          this one — this bundle will replace it.
+        </p>
       )}
       <p style={{ fontSize: "0.8rem", color: "#6b7280", textAlign: "center", margin: "0.4rem 0 0" }}>
         Buying more than one? Add them to your cart — shipping is charged once.
