@@ -1047,7 +1047,7 @@ class ProductAdminApp:
             [("Mark Sold", self.mark_sold), ("Mark Pending", self.mark_pending), ("Mark Available", self.mark_available), ("Delete", self.delete_product)],
             [("Rename", self.edit_name), ("Edit Price", self.edit_price), ("Edit Description", self.edit_description), ("Change Group", self.change_group), ("Open Images Folder", self.open_product_folder), ("Copy Link", self.copy_product_link)],
             [("Add/Edit YouTube Video", self.edit_product_video), ("Remove Video", self.remove_product_video), ("Move to Previous Work", self.move_to_previous), ("Edit Flags", self.edit_flags), ("Edit Keywords", self.edit_keywords), ("Edit Size", self.edit_size), ("Edit Details", self.edit_details)],
-            [("Set Sale", self.set_product_sale), ("End Sale", self.end_product_sale), ("Make Bundle", self.make_bundle)]
+            [("Set Sale", self.set_product_sale), ("End Sale", self.end_product_sale), ("Make Bundle", self.make_bundle), ("Edit Bundle", self.edit_bundle)]
         ]):
             btn_frame = ttk.Frame(main_frame)
             btn_frame.pack(fill='x', pady=3)
@@ -1684,7 +1684,10 @@ class ProductAdminApp:
         if len(pieces) < 2:
             return messagebox.showwarning(
                 "Make Bundle", "Select two or more pieces first (Ctrl or Shift click in the list).")
-        if any(self.is_bundle(p) for p in pieces):
+        bundles = [p for p in pieces if self.is_bundle(p)]
+        if len(bundles) == 1:
+            return self.edit_bundle()      # a bundle plus pieces: add them to it
+        if bundles:
             return messagebox.showwarning("Make Bundle", "A bundle can't contain another bundle.")
         gone = [p for p in pieces if p.get('status', 'available') != 'available']
         if gone:
@@ -1796,6 +1799,8 @@ class ProductAdminApp:
                 product["noWearChoice"] = True
             if featured_var.get():
                 product["featured"] = True
+            if not photos and made:
+                product["autoCover"] = True    # remade if the pieces change
             self.data['products'].append(product)
             self.save_data()
             dialog.destroy()
@@ -1811,6 +1816,184 @@ class ProductAdminApp:
 
         buttons = ttk.Frame(frame); buttons.pack(fill='x', pady=(12, 0))
         ttk.Button(buttons, text="Create Bundle", command=create).pack(side='right')
+        ttk.Button(buttons, text="Cancel", command=dialog.destroy).pack(side='right', padx=6)
+
+    BUNDLE_LIST_LINE = re.compile(r'^• .+ \(Item #[^)]*\)\s*$')
+
+    def bundle_piece_lines(self, pieces):
+        return [f"• {p['name']} (Item #{p.get('itemId', '-')})" for p in pieces]
+
+    def update_bundle_description(self, text, old_count, pieces):
+        """Rewrite the piece list Make Bundle wrote into a description, and the
+        "These N pieces" count. Anything else in the text is left as typed; a
+        description without that list comes back unchanged."""
+        lines = text.split("\n")
+        spots = [i for i, line in enumerate(lines) if self.BUNDLE_LIST_LINE.match(line)]
+        if not spots:
+            return text
+        first, last = spots[0], spots[-1]
+        lines[first:last + 1] = self.bundle_piece_lines(pieces)
+        text = "\n".join(lines)
+        return text.replace(f"These {old_count} pieces", f"These {len(pieces)} pieces", 1)
+
+    def edit_bundle(self):
+        """Add pieces to a bundle or take them out.
+
+        Select the bundle - plus, to add, the pieces to put in it (Ctrl or
+        Shift click) - and click Edit Bundle. Untick a piece to remove it."""
+        ids = list(self.product_tree.selection())
+        selected = [p for p in self.data['products'] if p['id'] in ids]
+        bundles = [p for p in selected if self.is_bundle(p)]
+        if len(bundles) != 1:
+            return messagebox.showwarning(
+                "Edit Bundle",
+                "Select one bundle. To add pieces to it, also select those pieces "
+                "(Ctrl or Shift click), then click Edit Bundle.")
+        bundle = bundles[0]
+        if bundle.get('soldAsBundle'):
+            return messagebox.showwarning("Edit Bundle", "This bundle has sold, so it can't be changed.")
+
+        by_id = {p['id']: p for p in self.data['products']}
+        current = [by_id[i] for i in bundle['bundle'] if i in by_id]
+        missing = [i for i in bundle['bundle'] if i not in by_id]
+        adding = [p for p in selected if not self.is_bundle(p) and p['id'] not in bundle['bundle']]
+        not_free = [p for p in adding if p.get('status', 'available') != 'available']
+        if not_free:
+            return messagebox.showwarning(
+                "Edit Bundle", "Only available pieces can be added. Not available:\n" +
+                "\n".join(f"  {p.get('itemId', '-')}  {p['name']} ({p.get('status')})" for p in not_free))
+
+        def price_of(p):
+            return float(p.get('salePrice') or p.get('price') or 0)
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title(f"Edit Bundle - {bundle['name']}")
+        dialog.geometry("620x560")
+        dialog.transient(self.root); dialog.grab_set()
+        frame = ttk.Frame(dialog, padding=16)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(frame, text=f"{bundle.get('itemId', '-')}  {bundle['name']}",
+                  font=('Helvetica', 11, 'bold')).pack(anchor='w')
+        ttk.Label(frame, text="Ticked pieces are in the bundle. Untick to take one out.",
+                  foreground='gray').pack(anchor='w', pady=(2, 8))
+
+        rows = []          # (product, BooleanVar)
+        list_frame = ttk.Frame(frame); list_frame.pack(fill='x')
+        for p in current + adding:
+            var = tk.BooleanVar(value=True)
+            tag = "   (adding)" if p in adding else ""
+            if p.get('status', 'available') != 'available':
+                tag += f"   [{p.get('status', '').upper()}]"
+            ttk.Checkbutton(list_frame, variable=var,
+                            text=f"{p.get('itemId', '-')}   {p['name']}   (${price_of(p):g}){tag}"
+                            ).pack(anchor='w')
+            rows.append((p, var))
+        if missing:
+            ttk.Label(list_frame, foreground='#b45309',
+                      text=f"{len(missing)} piece(s) in this bundle no longer exist and will be dropped."
+                      ).pack(anchor='w', pady=(4, 0))
+        if not adding:
+            ttk.Label(frame, foreground='gray', wraplength=560,
+                      text="To add pieces: close this, select the bundle and the pieces to add "
+                           "(Ctrl or Shift click), then click Edit Bundle again."
+                      ).pack(anchor='w', pady=(6, 0))
+
+        price_row = ttk.Frame(frame); price_row.pack(anchor='w', fill='x', pady=(12, 0))
+        ttk.Label(price_row, text="Bundle price: $").pack(side='left')
+        price_var = tk.StringVar(value=f"{float(bundle.get('price', 0)):g}")
+        ttk.Entry(price_row, textvariable=price_var, width=10).pack(side='left')
+        info_var = tk.StringVar()
+        ttk.Label(price_row, textvariable=info_var, foreground='#0a7').pack(side='left', padx=10)
+
+        def update_info(*_):
+            chosen = [p for p, v in rows if v.get()]
+            separately = sum(price_of(p) for p in chosen)
+            text = f"{len(chosen)} pieces, ${separately:g} separately"
+            try:
+                saving = separately - float(price_var.get())
+                text += f" - buyer saves ${saving:g}" if saving > 0 else " - no saving"
+            except ValueError:
+                pass
+            info_var.set(text)
+        price_var.trace_add('write', update_info)
+        for _p, v in rows:
+            v.trace_add('write', update_info)
+        update_info()
+
+        has_list = any(self.BUNDLE_LIST_LINE.match(l) for l in bundle.get('description', '').split("\n"))
+        desc_var = tk.BooleanVar(value=has_list)
+        cb = ttk.Checkbutton(frame, variable=desc_var,
+                             text="Update the list of pieces in the description")
+        cb.pack(anchor='w', pady=(12, 0))
+        if not has_list:
+            cb.state(['disabled'])
+            ttk.Label(frame, foreground='gray',
+                      text="(the description has no piece list to update - edit it with Edit Description)"
+                      ).pack(anchor='w')
+
+        folder = os.path.join(PENDANTS_FOLDER, bundle.get('folder', bundle['id']))
+        _f, own_photos = self.product_images(bundle)
+        # A cover Make Bundle generated is remade; a group photo is kept unless asked.
+        cover_var = tk.BooleanVar(value=bool(bundle.get('autoCover')) or len(own_photos) <= 1)
+        ttk.Checkbutton(frame, variable=cover_var,
+                        text="Remake the cover photo (1.jpg) from the pieces' photos"
+                        ).pack(anchor='w', pady=(6, 0))
+        ttk.Label(frame, foreground='gray', wraplength=560,
+                  text="Untick this if 1.jpg is a group photo you took. The old cover is kept "
+                       "in the folder as cover-previous.jpg, which the site ignores."
+                  ).pack(anchor='w')
+
+        def save():
+            chosen = [p for p, v in rows if v.get()]
+            if len(chosen) < 2:
+                return messagebox.showerror("Edit Bundle", "A bundle needs at least two pieces.", parent=dialog)
+            try:
+                price = float(price_var.get())
+            except ValueError:
+                return messagebox.showerror("Edit Bundle", "Price must be a number.", parent=dialog)
+
+            old_count = len(bundle['bundle'])
+            if desc_var.get():
+                bundle['description'] = self.update_bundle_description(
+                    bundle.get('description', ''), old_count, chosen)
+            bundle['bundle'] = [p['id'] for p in chosen]
+            if price != float(bundle.get('price', 0)):
+                bundle['price'] = price
+                bundle.pop('salePrice', None)
+                bundle.pop('originalPrice', None)
+            if any(self.offers_wear_choice(p) for p in chosen):
+                bundle.pop('noWearChoice', None)
+            else:
+                bundle['noWearChoice'] = True
+
+            if cover_var.get():
+                cover = os.path.join(folder, "1.jpg")
+                os.makedirs(folder, exist_ok=True)
+                if os.path.exists(cover):
+                    shutil.copy2(cover, os.path.join(folder, "cover-previous.jpg"))
+                    os.remove(cover)   # write_bundle_photos only makes 1.jpg
+                try:
+                    if self.write_bundle_photos(folder, [], chosen):
+                        bundle['autoCover'] = True
+                except Exception as exc:
+                    backup = os.path.join(folder, "cover-previous.jpg")
+                    if os.path.exists(backup) and not os.path.exists(cover):
+                        shutil.copy2(backup, cover)
+                    messagebox.showerror("Edit Bundle", f"Couldn't remake the cover:\n{exc}", parent=dialog)
+
+            self.save_data()
+            dialog.destroy()
+            self.refresh_product_list(reload=False)
+            if self.product_tree.exists(bundle['id']):
+                self.product_tree.selection_set(bundle['id'])
+            status = bundle.get('status', 'available')
+            note = "" if status == 'available' else f" - now {status.upper()} (a piece isn't available)"
+            self.manage_status_var.set(
+                f"Bundle updated: {bundle['name']}, {len(chosen)} pieces{note}. Publish to put it online.")
+
+        buttons = ttk.Frame(frame); buttons.pack(fill='x', side='bottom', pady=(12, 0))
+        ttk.Button(buttons, text="Save Bundle", command=save).pack(side='right')
         ttk.Button(buttons, text="Cancel", command=dialog.destroy).pack(side='right', padx=6)
 
     def write_bundle_photos(self, folder, photos, pieces):
