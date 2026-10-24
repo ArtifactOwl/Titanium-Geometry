@@ -15,6 +15,7 @@ import shutil
 import queue
 import subprocess
 import threading
+import unicodedata
 from datetime import datetime, date, timedelta
 from pathlib import Path
 
@@ -339,6 +340,10 @@ class ProductAdminApp:
         return size[:SIZE_MAX_LENGTH]
 
     def slugify(self, text):
+        # Web addresses and folder names stay plain ASCII: accents become the
+        # plain letter (flambé -> flambe) and anything else non-ASCII is
+        # dropped. The product name itself keeps its accents.
+        text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
         text = text.lower().strip()
         text = re.sub(r'[^\w\s-]', '', text)
         text = re.sub(r'[-\s]+', '-', text)
